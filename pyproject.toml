@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pytrainer"
+version = "0.1.0"
+description = "Интерактивный тренажёр Python с уклоном в Telegram/Discord ботов"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "PySide6>=6.6",
+    "Pygments>=2.17",
+    "markdown>=3.5",
+]
+
+[project.scripts]
+pytrainer = "pytrainer.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+pytrainer = ["assets/*.qss", "assets/*.png", "assets/*.svg"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["E501"]
