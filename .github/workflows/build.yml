@@ -1,0 +1,81 @@
+name: Build PyTrainer
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff
+      - name: Run ruff
+        run: ruff check src/
+
+  build-windows:
+    name: Build Windows .exe
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pyinstaller
+
+      - name: Build .exe with PyInstaller
+        shell: bash
+        run: |
+          pyinstaller --noconfirm --clean pytrainer.spec
+
+      - name: Show build output
+        shell: bash
+        run: |
+          ls -la dist/
+
+      - name: Upload .exe artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PyTrainer-windows
+          path: dist/PyTrainer.exe
+          if-no-files-found: error
+
+      - name: Upload to release (if tag)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/PyTrainer.exe
+          generate_release_notes: true
+
+      - name: Create rolling latest release (on main)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: PyTrainer (latest from main)
+          body: |
+            Автоматическая сборка из ветки `main`. Скачай `PyTrainer.exe` ниже и запусти —
+            устанавливать ничего не нужно.
+          files: dist/PyTrainer.exe
+          prerelease: true
+          make_latest: false
