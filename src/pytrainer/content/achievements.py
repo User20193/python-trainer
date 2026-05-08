@@ -59,11 +59,25 @@ ACHIEVEMENTS: tuple[Achievement, ...] = (
         check=lambda p: _ach(p, tasks=5),
     ),
     Achievement(
+        id="ten-tasks",
+        title="Десятка",
+        description="Решил 10 задач.",
+        icon="🎯",
+        check=lambda p: _ach(p, tasks=10),
+    ),
+    Achievement(
+        id="twenty-tasks",
+        title="Уверенный кодер",
+        description="Решил 20 задач.",
+        icon="🛠️",
+        check=lambda p: _ach(p, tasks=20),
+    ),
+    Achievement(
         id="all-tasks",
         title="Чемпион задач",
         description="Решил все задачи курса.",
         icon="🥇",
-        check=lambda p: _ach(p, tasks=11),
+        check=lambda p: _ach(p, tasks=30),
     ),
     Achievement(
         id="xp-50",

@@ -700,6 +700,1180 @@ if __name__ == "__main__":
 )
 
 
+
+# 12. Карточка профиля — print с sep
+T_PRINT_CARD = Task(
+    id="t-print-card",
+    title="Карточка профиля",
+    description_md="""\
+Выведи **одной строкой** информацию о пользователе через ` | ` (пробел, вертикальная
+черта, пробел):
+
+```
+Кирилл | 19 | Москва | Python
+```
+
+Используй один `print(...)` с параметром `sep`.
+""",
+    starter_code='# один print с четырьмя аргументами и sep=" | "\n',
+    solution_code='print("Кирилл", 19, "Москва", "Python", sep=" | ")\n',
+    solution_explanation_md="""\
+- `sep=" | "` — между каждой парой аргументов будет ` | `.
+- Числа в кавычки оборачивать не нужно — `print` сам их отформатирует.
+""",
+    hints=(
+        "Используй sep=' | ' (пробел, |, пробел).",
+        "Передай 4 аргумента подряд через запятую.",
+    ),
+    tests=(
+        TaskTest(
+            kind="stdio",
+            name="вывод карточки",
+            stdin="",
+            expected_stdout="Кирилл | 19 | Москва | Python\n",
+        ),
+    ),
+    xp=8,
+)
+
+
+# 13. ASCII-разделитель
+T_PRINT_ASCII = Task(
+    id="t-print-ascii",
+    title="ASCII-разделитель",
+    description_md="""\
+Выведи строку из **40** знаков `=`. Без пробелов, в одну строку.
+
+Подсказка: строку можно умножать на число.
+
+```python
+print("ab" * 3)  # ababab
+```
+""",
+    starter_code='# один print со строкой "=" * 40\n',
+    solution_code='print("=" * 40)\n',
+    solution_explanation_md="""\
+- В Python строку можно «умножить» на число — это повторение.
+- `"=" * 40` создаст строку из 40 символов `=`.
+- `print` выведет результат.
+""",
+    hints=(
+        "Строку можно умножить на число: \"-\" * 5 → \"-----\".",
+        "Один print, без циклов.",
+    ),
+    tests=(
+        TaskTest(
+            kind="stdio",
+            name="40 знаков равно",
+            stdin="",
+            expected_stdout="========================================\n",
+        ),
+    ),
+    xp=6,
+)
+
+
+# 14. Сумма двух чисел из ввода
+T_SUM_INPUTS = Task(
+    id="t-sum-inputs",
+    title="Сумма двух чисел",
+    description_md="""\
+Прочитай **два целых числа** через `input()` (каждое — отдельной строкой) и выведи
+их сумму.
+
+Пример:
+
+```
+вход:
+3
+5
+
+выход:
+8
+```
+""",
+    starter_code='a = int(input())\nb = int(input())\n# выведи a + b\n',
+    solution_code='a = int(input())\nb = int(input())\nprint(a + b)\n',
+    solution_explanation_md="""\
+- `int(input())` читает строку и сразу превращает в число.
+- Сумму выводим обычным `print(a + b)`.
+- Без `int()` строки бы склеивались, не складывались: `"3" + "5"` дало бы `"35"`.
+""",
+    hints=(
+        "Каждый input в отдельной строке, обёрнут в int(...).",
+        "Сложить и просто print.",
+    ),
+    tests=(
+        TaskTest(kind="stdio", name="3+5", stdin="3\n5\n", expected_stdout="8\n"),
+        TaskTest(kind="stdio", name="0+0", stdin="0\n0\n", expected_stdout="0\n"),
+        TaskTest(
+            kind="stdio", name="-7+10", stdin="-7\n10\n", expected_stdout="3\n"
+        ),
+    ),
+    xp=8,
+)
+
+
+# 15. Целое и дробное деление
+T_DIVMOD = Task(
+    id="t-divmod",
+    title="Деление: частное и остаток",
+    description_md="""\
+Прочитай два положительных целых числа: `a` и `b` (через `input()`, каждое в своей
+строке). Выведи **частное** и **остаток** от деления `a` на `b`, каждый —
+отдельной строкой.
+
+Пример:
+
+```
+вход:
+17
+5
+
+выход:
+3
+2
+```
+""",
+    starter_code='a = int(input())\nb = int(input())\n# выведи a // b и a % b\n',
+    solution_code='a = int(input())\nb = int(input())\nprint(a // b)\nprint(a % b)\n',
+    solution_explanation_md="""\
+- `//` — целочисленное деление (без остатка).
+- `%` — остаток от деления.
+- Эти два оператора идут рядом, потому что вместе дают полную картину деления.
+""",
+    hints=(
+        "// — целочисленное деление, % — остаток.",
+        "Два print подряд: сначала частное, потом остаток.",
+    ),
+    tests=(
+        TaskTest(
+            kind="stdio", name="17 / 5", stdin="17\n5\n", expected_stdout="3\n2\n"
+        ),
+        TaskTest(
+            kind="stdio", name="100 / 7", stdin="100\n7\n", expected_stdout="14\n2\n"
+        ),
+        TaskTest(
+            kind="stdio", name="9 / 3", stdin="9\n3\n", expected_stdout="3\n0\n"
+        ),
+    ),
+    xp=10,
+)
+
+
+# 16. Существует ли треугольник
+T_TRI = Task(
+    id="t-triangle",
+    title="Существует ли треугольник?",
+    description_md="""\
+Напиши функцию `is_triangle(a, b, c)`, которая возвращает `True`, если из отрезков
+с длинами `a`, `b`, `c` можно сложить треугольник, и `False` — иначе.
+
+**Условие**: треугольник существует, если **сумма любых двух сторон строго больше
+третьей**. Стороны должны быть положительными.
+
+```python
+is_triangle(3, 4, 5)   # True
+is_triangle(1, 1, 5)   # False — 1 + 1 < 5
+is_triangle(0, 4, 5)   # False — нулевая сторона
+```
+""",
+    starter_code='def is_triangle(a, b, c):\n    pass\n',
+    solution_code=(
+        'def is_triangle(a, b, c):\n'
+        '    if a <= 0 or b <= 0 or c <= 0:\n'
+        '        return False\n'
+        '    return a + b > c and a + c > b and b + c > a\n'
+    ),
+    solution_explanation_md="""\
+- Сначала отсекаем некорректные данные: нулевые или отрицательные стороны.
+- Дальше — три неравенства треугольника, объединённые `and`.
+- Возвращаем результат сравнений напрямую — это уже `True` или `False`.
+""",
+    hints=(
+        "Сначала проверь, что все стороны > 0.",
+        "Условие треугольника: сумма любых двух больше третьей.",
+        "Можешь вернуть результат `and` напрямую — это уже True/False.",
+    ),
+    tests=(
+        TaskTest(
+            kind="functional",
+            name="3-4-5",
+            function="is_triangle",
+            args=(3, 4, 5),
+            expected=True,
+        ),
+        TaskTest(
+            kind="functional",
+            name="1-1-5",
+            function="is_triangle",
+            args=(1, 1, 5),
+            expected=False,
+        ),
+        TaskTest(
+            kind="functional",
+            name="вырожденный",
+            function="is_triangle",
+            args=(2, 3, 5),
+            expected=False,
+        ),
+        TaskTest(
+            kind="functional",
+            name="ноль стороны",
+            function="is_triangle",
+            args=(0, 4, 5),
+            expected=False,
+        ),
+        TaskTest(
+            kind="functional",
+            name="равносторонний",
+            function="is_triangle",
+            args=(7, 7, 7),
+            expected=True,
+        ),
+    ),
+    xp=14,
+)
+
+
+# 17. FizzBuzz
+T_FIZZBUZZ = Task(
+    id="t-fizzbuzz",
+    title="FizzBuzz",
+    description_md="""\
+Классическая задача: для каждого числа от **1 до n** включительно выведи строку:
+
+- `Fizz` — если число делится на 3,
+- `Buzz` — если число делится на 5,
+- `FizzBuzz` — если делится на 3 **и** на 5,
+- иначе — просто число.
+
+Каждый ответ — на отдельной строке.
+
+Пример вывода для `n = 5`:
+
+```
+1
+2
+Fizz
+4
+Buzz
+```
+
+Прочитай `n` через `input()`.
+""",
+    starter_code='n = int(input())\nfor i in range(1, n + 1):\n    # реши, что выводить\n    pass\n',
+    solution_code=(
+        'n = int(input())\n'
+        'for i in range(1, n + 1):\n'
+        '    if i % 15 == 0:\n'
+        '        print("FizzBuzz")\n'
+        '    elif i % 3 == 0:\n'
+        '        print("Fizz")\n'
+        '    elif i % 5 == 0:\n'
+        '        print("Buzz")\n'
+        '    else:\n'
+        '        print(i)\n'
+    ),
+    solution_explanation_md="""\
+- Сначала проверяй **самое узкое** условие — кратность 15 (это И на 3, И на 5).
+  Если поставить эту проверку после `% 3` или `% 5`, она никогда не сработает.
+- `% 15 == 0` эквивалентно `% 3 == 0 and % 5 == 0`, но короче.
+- В `else` выводим само число — `print(i)`, число будет автоматически приведено к строке.
+""",
+    hints=(
+        "Иди от самого узкого случая (15) к самому широкому (просто число).",
+        "Внутри цикла используй if/elif/elif/else.",
+        "% 15 == 0 — это и на 3, и на 5.",
+    ),
+    tests=(
+        TaskTest(
+            kind="stdio",
+            name="до 5",
+            stdin="5\n",
+            expected_stdout="1\n2\nFizz\n4\nBuzz\n",
+        ),
+        TaskTest(
+            kind="stdio",
+            name="до 15",
+            stdin="15\n",
+            expected_stdout=(
+                "1\n2\nFizz\n4\nBuzz\nFizz\n7\n8\nFizz\nBuzz\n"
+                "11\nFizz\n13\n14\nFizzBuzz\n"
+            ),
+        ),
+        TaskTest(kind="stdio", name="n=1", stdin="1\n", expected_stdout="1\n"),
+    ),
+    xp=15,
+)
+
+
+# 18. Сумма цифр
+T_DIGIT_SUM = Task(
+    id="t-digit-sum",
+    title="Сумма цифр числа",
+    description_md="""\
+Напиши функцию `digit_sum(n)`, которая возвращает сумму цифр **неотрицательного**
+целого числа `n`.
+
+```python
+digit_sum(123)   # 6  (1 + 2 + 3)
+digit_sum(0)     # 0
+digit_sum(9999)  # 36
+```
+""",
+    starter_code='def digit_sum(n):\n    pass\n',
+    solution_code=(
+        'def digit_sum(n):\n'
+        '    total = 0\n'
+        '    for ch in str(n):\n'
+        '        total += int(ch)\n'
+        '    return total\n'
+    ),
+    solution_explanation_md="""\
+- Самый простой способ — превратить число в строку: `str(n)` даёт `"123"`.
+- По строке мы можем итерироваться `for ch in ...` — символ за символом.
+- Каждый символ превращаем обратно в число `int(ch)` и складываем.
+- Альтернатива через `%` и `//` тоже работает, но для новичка строковый способ чище.
+""",
+    hints=(
+        "Преврати число в строку через str(...).",
+        "Перебери каждый символ и сложи int(символ).",
+    ),
+    tests=(
+        TaskTest(
+            kind="functional",
+            name="123",
+            function="digit_sum",
+            args=(123,),
+            expected=6,
+        ),
+        TaskTest(
+            kind="functional",
+            name="0",
+            function="digit_sum",
+            args=(0,),
+            expected=0,
+        ),
+        TaskTest(
+            kind="functional",
+            name="9999",
+            function="digit_sum",
+            args=(9999,),
+            expected=36,
+        ),
+        TaskTest(
+            kind="functional",
+            name="одна цифра",
+            function="digit_sum",
+            args=(7,),
+            expected=7,
+        ),
+    ),
+    xp=12,
+)
+
+
+# 19. Развернуть строку
+T_REVERSE = Task(
+    id="t-reverse",
+    title="Развернуть строку",
+    description_md="""\
+Напиши функцию `reverse(s)`, которая возвращает строку, развёрнутую задом наперёд.
+
+```python
+reverse("Python")  # "nohtyP"
+reverse("a")       # "a"
+reverse("")        # ""
+```
+
+Способов несколько — выбери любой удобный.
+""",
+    starter_code='def reverse(s):\n    pass\n',
+    solution_code='def reverse(s):\n    return s[::-1]\n',
+    solution_explanation_md="""\
+- В Python есть **срезы со шагом**: `s[start:stop:step]`. Если `step` отрицательный,
+  идём с конца к началу.
+- `s[::-1]` — «вся строка задом наперёд».
+- Срезы работают и для списков: `[1, 2, 3][::-1]` → `[3, 2, 1]`.
+""",
+    hints=(
+        "Самый короткий способ — срез s[::-1].",
+        "Альтернатива — собирать символы в обратном порядке через цикл.",
+    ),
+    tests=(
+        TaskTest(
+            kind="functional",
+            name="Python",
+            function="reverse",
+            args=("Python",),
+            expected="nohtyP",
+        ),
+        TaskTest(
+            kind="functional",
+            name="один символ",
+            function="reverse",
+            args=("a",),
+            expected="a",
+        ),
+        TaskTest(
+            kind="functional",
+            name="пустая",
+            function="reverse",
+            args=("",),
+            expected="",
+        ),
+        TaskTest(
+            kind="functional",
+            name="палиндром",
+            function="reverse",
+            args=("шалаш",),
+            expected="шалаш",
+        ),
+    ),
+    xp=10,
+)
+
+
+# 20. Считалка слов
+T_WORD_COUNT = Task(
+    id="t-word-count",
+    title="Сколько слов в строке",
+    description_md="""\
+Напиши функцию `word_count(s)`, которая возвращает **количество слов** в строке.
+Слова разделены любыми пробельными символами (один или несколько пробелов, табы,
+переводы строки). Пустая строка — это 0 слов.
+
+```python
+word_count("hello world")        # 2
+word_count("  один   два три ")  # 3
+word_count("")                   # 0
+```
+""",
+    starter_code='def word_count(s):\n    pass\n',
+    solution_code='def word_count(s):\n    return len(s.split())\n',
+    solution_explanation_md="""\
+- Метод строки `.split()` без аргументов разбивает строку по любым пробелам.
+- Хорошее свойство `.split()` без аргументов: **схлопывает несколько пробелов
+  подряд в один** и игнорирует пробелы по краям. Если бы мы передали
+  `s.split(" ")` — пустые строки попадали бы в результат.
+- `len(...)` — длина списка = количество слов.
+""",
+    hints=(
+        "s.split() без аргументов сделает всю работу.",
+        "Не путай с s.split(' '), который оставляет пустые элементы.",
+    ),
+    tests=(
+        TaskTest(
+            kind="functional",
+            name="hello world",
+            function="word_count",
+            args=("hello world",),
+            expected=2,
+        ),
+        TaskTest(
+            kind="functional",
+            name="много пробелов",
+            function="word_count",
+            args=("  один   два три ",),
+            expected=3,
+        ),
+        TaskTest(
+            kind="functional",
+            name="пустая",
+            function="word_count",
+            args=("",),
+            expected=0,
+        ),
+        TaskTest(
+            kind="functional",
+            name="одно слово",
+            function="word_count",
+            args=("привет",),
+            expected=1,
+        ),
+        TaskTest(
+            kind="functional",
+            name="только пробелы",
+            function="word_count",
+            args=("    ",),
+            expected=0,
+        ),
+    ),
+    xp=12,
+)
+
+
+# 21. Уникальные элементы
+T_UNIQUE = Task(
+    id="t-unique",
+    title="Уникальные элементы списка",
+    description_md="""\
+Напиши функцию `unique(items)`, которая возвращает **новый список** уникальных
+элементов в том порядке, в каком они впервые встретились.
+
+```python
+unique([1, 2, 1, 3, 2, 4])      # [1, 2, 3, 4]
+unique(["a", "b", "a", "c"])    # ["a", "b", "c"]
+unique([])                      # []
+```
+
+Не используй `set()` — он не сохраняет порядок (и в этой задаче нужно сохранить
+**первое появление** элемента).
+""",
+    starter_code='def unique(items):\n    pass\n',
+    solution_code=(
+        'def unique(items):\n'
+        '    seen = set()\n'
+        '    result = []\n'
+        '    for item in items:\n'
+        '        if item not in seen:\n'
+        '            seen.add(item)\n'
+        '            result.append(item)\n'
+        '    return result\n'
+    ),
+    solution_explanation_md="""\
+- Идея: помнить, что уже видели, и пропускать повторы.
+- `seen` — это **множество** (`set`). Проверка `item in seen` работает очень быстро
+  (быстрее, чем `item in result` для длинных списков).
+- В `result` собираем элементы в порядке их первого появления.
+""",
+    hints=(
+        "Заведи set() для уже виденных и list для результата.",
+        "Перебирай items, пропускай тех, кто уже в set.",
+    ),
+    tests=(
+        TaskTest(
+            kind="functional",
+            name="числа",
+            function="unique",
+            args=([1, 2, 1, 3, 2, 4],),
+            expected=[1, 2, 3, 4],
+        ),
+        TaskTest(
+            kind="functional",
+            name="строки",
+            function="unique",
+            args=(["a", "b", "a", "c"],),
+            expected=["a", "b", "c"],
+        ),
+        TaskTest(
+            kind="functional",
+            name="пустой",
+            function="unique",
+            args=([],),
+            expected=[],
+        ),
+        TaskTest(
+            kind="functional",
+            name="без повторов",
+            function="unique",
+            args=([1, 2, 3],),
+            expected=[1, 2, 3],
+        ),
+    ),
+    xp=14,
+)
+
+
+# 22. Минимум-максимум вручную
+T_MIN_MAX = Task(
+    id="t-min-max",
+    title="Минимум и максимум вручную",
+    description_md="""\
+Напиши функцию `min_max(numbers)`, которая возвращает **кортеж** `(минимум,
+максимум)` списка чисел.
+
+**Условие**: реализуй сам, не используя встроенные `min()` и `max()`.
+
+```python
+min_max([3, 1, 4, 1, 5, 9])   # (1, 9)
+min_max([7])                  # (7, 7)
+```
+
+Гарантируется, что список не пуст.
+""",
+    starter_code='def min_max(numbers):\n    pass\n',
+    solution_code=(
+        'def min_max(numbers):\n'
+        '    cur_min = numbers[0]\n'
+        '    cur_max = numbers[0]\n'
+        '    for n in numbers[1:]:\n'
+        '        if n < cur_min:\n'
+        '            cur_min = n\n'
+        '        if n > cur_max:\n'
+        '            cur_max = n\n'
+        '    return (cur_min, cur_max)\n'
+    ),
+    solution_explanation_md="""\
+- Идея: пройти по всем элементам и держать «текущий минимум» и «текущий максимум».
+- Начальные значения — первый элемент списка. Дальше идём со второго.
+- Возвращаем **кортеж** `(min, max)` — это скобки с запятой, как и `(1, 2)`.
+""",
+    hints=(
+        "Запоминай текущий минимум и максимум, начиная с первого элемента.",
+        "Проходи по списку и обновляй, если нашёл меньше/больше.",
+    ),
+    tests=(
+        TaskTest(
+            kind="functional",
+            name="разные",
+            function="min_max",
+            args=([3, 1, 4, 1, 5, 9],),
+            expected=(1, 9),
+        ),
+        TaskTest(
+            kind="functional",
+            name="один элемент",
+            function="min_max",
+            args=([7],),
+            expected=(7, 7),
+        ),
+        TaskTest(
+            kind="functional",
+            name="отрицательные",
+            function="min_max",
+            args=([-3, -1, -7, -2],),
+            expected=(-7, -1),
+        ),
+    ),
+    xp=12,
+)
+
+
+# 23. Среднее
+T_AVERAGE = Task(
+    id="t-average",
+    title="Среднее арифметическое",
+    description_md="""\
+Напиши функцию `average(numbers)`, которая возвращает среднее арифметическое
+чисел в списке. Если список пустой — возвращай `0`.
+
+Округлять не нужно — результат может быть дробью.
+
+```python
+average([1, 2, 3, 4])   # 2.5
+average([10])           # 10.0
+average([])             # 0
+```
+""",
+    starter_code='def average(numbers):\n    pass\n',
+    solution_code=(
+        'def average(numbers):\n'
+        '    if not numbers:\n'
+        '        return 0\n'
+        '    return sum(numbers) / len(numbers)\n'
+    ),
+    solution_explanation_md="""\
+- Сначала проверка на пустой список — `if not numbers` истинно, если список пустой.
+- `sum(numbers) / len(numbers)` — стандартная формула среднего.
+- Деление через `/` всегда даёт `float`, даже если числа целые.
+""",
+    hints=(
+        "sum() и len() из коробки.",
+        "Не забудь обработать пустой список (иначе деление на 0).",
+    ),
+    tests=(
+        TaskTest(
+            kind="functional",
+            name="1..4",
+            function="average",
+            args=([1, 2, 3, 4],),
+            expected=2.5,
+        ),
+        TaskTest(
+            kind="functional",
+            name="один",
+            function="average",
+            args=([10],),
+            expected=10.0,
+        ),
+        TaskTest(
+            kind="functional",
+            name="пустой",
+            function="average",
+            args=([],),
+            expected=0,
+        ),
+    ),
+    xp=10,
+)
+
+
+# 24. Подсчёт буквы
+T_COUNT_CHAR = Task(
+    id="t-count-char",
+    title="Сколько раз встречается символ",
+    description_md="""\
+Напиши функцию `count_char(s, ch)`, которая считает, сколько раз символ `ch`
+встречается в строке `s`. Регистр **игнорируем** (большие и маленькие буквы
+считаются одним символом).
+
+```python
+count_char("Hello", "l")     # 2
+count_char("Hello", "H")     # 1  (находит и H)
+count_char("Hello", "h")     # 1  (то же самое — регистр не важен)
+count_char("Привет", "е")    # 1
+```
+""",
+    starter_code='def count_char(s, ch):\n    pass\n',
+    solution_code=(
+        'def count_char(s, ch):\n'
+        '    return s.lower().count(ch.lower())\n'
+    ),
+    solution_explanation_md="""\
+- `.lower()` приводит строку к нижнему регистру. Применяем и к строке, и к символу.
+- `.count(...)` у строки сразу возвращает количество вхождений.
+- Альтернатива — цикл с `+= 1`, но `.count` короче и быстрее.
+""",
+    hints=(
+        ".lower() уберёт разницу в регистре.",
+        "У строки есть метод .count(подстрока).",
+    ),
+    tests=(
+        TaskTest(
+            kind="functional",
+            name="ll",
+            function="count_char",
+            args=("Hello", "l"),
+            expected=2,
+        ),
+        TaskTest(
+            kind="functional",
+            name="регистр H",
+            function="count_char",
+            args=("Hello", "h"),
+            expected=1,
+        ),
+        TaskTest(
+            kind="functional",
+            name="нет вхождений",
+            function="count_char",
+            args=("Hello", "z"),
+            expected=0,
+        ),
+        TaskTest(
+            kind="functional",
+            name="пустая строка",
+            function="count_char",
+            args=("", "a"),
+            expected=0,
+        ),
+        TaskTest(
+            kind="functional",
+            name="русский",
+            function="count_char",
+            args=("Привет", "Е"),
+            expected=1,
+        ),
+    ),
+    xp=12,
+)
+
+
+# 25. Калькулятор
+T_CALC = Task(
+    id="t-calc",
+    title="Простой калькулятор",
+    description_md="""\
+Напиши функцию `calc(a, op, b)`. Она получает два числа `a`, `b` и **строку с
+операцией** `op` (`"+"`, `"-"`, `"*"`, `"/"`). Возвращает результат.
+
+При делении на ноль — возвращай строку `"делить на ноль нельзя"`.
+При неизвестной операции — возвращай строку `"неизвестная операция"`.
+
+```python
+calc(2, "+", 3)    # 5
+calc(10, "/", 4)   # 2.5
+calc(5, "/", 0)    # "делить на ноль нельзя"
+calc(2, "%", 3)    # "неизвестная операция"
+```
+""",
+    starter_code='def calc(a, op, b):\n    pass\n',
+    solution_code=(
+        'def calc(a, op, b):\n'
+        '    if op == "+":\n'
+        '        return a + b\n'
+        '    if op == "-":\n'
+        '        return a - b\n'
+        '    if op == "*":\n'
+        '        return a * b\n'
+        '    if op == "/":\n'
+        '        if b == 0:\n'
+        '            return "делить на ноль нельзя"\n'
+        '        return a / b\n'
+        '    return "неизвестная операция"\n'
+    ),
+    solution_explanation_md="""\
+- Цепочка отдельных `if ...: return ...` вместо `if/elif/else` — это **ранние
+  возвраты**. Каждый `return` сразу выходит из функции.
+- Деление на ноль обрабатываем отдельной проверкой.
+- Дошли до конца функции — значит, ни одна операция не подошла, возвращаем
+  «неизвестная операция».
+""",
+    hints=(
+        "Используй цепочку if'ов с return.",
+        "Перед делением проверь, не равен ли b нулю.",
+    ),
+    tests=(
+        TaskTest(
+            kind="functional",
+            name="плюс",
+            function="calc",
+            args=(2, "+", 3),
+            expected=5,
+        ),
+        TaskTest(
+            kind="functional",
+            name="минус",
+            function="calc",
+            args=(10, "-", 4),
+            expected=6,
+        ),
+        TaskTest(
+            kind="functional",
+            name="умножить",
+            function="calc",
+            args=(3, "*", 7),
+            expected=21,
+        ),
+        TaskTest(
+            kind="functional",
+            name="деление",
+            function="calc",
+            args=(10, "/", 4),
+            expected=2.5,
+        ),
+        TaskTest(
+            kind="functional",
+            name="деление на 0",
+            function="calc",
+            args=(5, "/", 0),
+            expected="делить на ноль нельзя",
+        ),
+        TaskTest(
+            kind="functional",
+            name="неизвестная",
+            function="calc",
+            args=(2, "%", 3),
+            expected="неизвестная операция",
+        ),
+    ),
+    xp=15,
+)
+
+
+# 26. *args
+T_ARGS_SUM = Task(
+    id="t-args-sum",
+    title="*args: сумма любого числа аргументов",
+    description_md="""\
+Напиши функцию `total(*nums)`, которая возвращает сумму **любого** количества
+переданных чисел. Если ничего не передано — `0`.
+
+```python
+total(1, 2, 3)       # 6
+total()              # 0
+total(10)            # 10
+total(1, 2, 3, 4, 5) # 15
+```
+
+Подсказка: `*args` в определении функции собирает все позиционные аргументы в
+кортеж.
+""",
+    starter_code='def total(*nums):\n    pass\n',
+    solution_code='def total(*nums):\n    return sum(nums)\n',
+    solution_explanation_md="""\
+- `*nums` в определении функции означает: «сюда соберутся все позиционные аргументы».
+- Внутри функции `nums` — это **кортеж** (tuple), как `(1, 2, 3)`.
+- `sum(nums)` суммирует элементы. Для пустого кортежа `sum` вернёт 0 — поэтому
+  отдельная проверка не нужна.
+""",
+    hints=(
+        "В определении функции пиши *nums — это собирает все аргументы.",
+        "sum() работает и с кортежем, и с пустым кортежем (вернёт 0).",
+    ),
+    tests=(
+        TaskTest(
+            kind="functional",
+            name="1+2+3",
+            function="total",
+            args=(1, 2, 3),
+            expected=6,
+        ),
+        TaskTest(
+            kind="functional",
+            name="пусто",
+            function="total",
+            args=(),
+            expected=0,
+        ),
+        TaskTest(
+            kind="functional",
+            name="один",
+            function="total",
+            args=(10,),
+            expected=10,
+        ),
+        TaskTest(
+            kind="functional",
+            name="много",
+            function="total",
+            args=(1, 2, 3, 4, 5, 6, 7, 8, 9, 10),
+            expected=55,
+        ),
+    ),
+    xp=12,
+)
+
+
+# 27. List comprehension: верхний регистр
+T_MAP_UPPER = Task(
+    id="t-map-upper",
+    title="Список в верхний регистр",
+    description_md="""\
+Напиши функцию `to_upper_list(words)`, которая получает список строк и возвращает
+**новый** список с теми же строками, но в **верхнем регистре**.
+
+```python
+to_upper_list(["hi", "world"])   # ["HI", "WORLD"]
+to_upper_list([])                # []
+```
+
+В решении используй **list comprehension** — это конструкция вида
+`[выражение for x in список]`.
+""",
+    starter_code='def to_upper_list(words):\n    pass\n',
+    solution_code='def to_upper_list(words):\n    return [w.upper() for w in words]\n',
+    solution_explanation_md="""\
+- **List comprehension** `[w.upper() for w in words]` — это компактная запись
+  цикла, который собирает результат в список.
+- Эквивалентный полный код:
+
+```python
+result = []
+for w in words:
+    result.append(w.upper())
+return result
+```
+
+- Через `lambda` тот же результат: `list(map(lambda w: w.upper(), words))`. Но
+  comprehension читается лучше.
+""",
+    hints=(
+        "List comprehension: [выражение for элемент in список].",
+        "У строки есть метод .upper().",
+    ),
+    tests=(
+        TaskTest(
+            kind="functional",
+            name="hi/world",
+            function="to_upper_list",
+            args=(["hi", "world"],),
+            expected=["HI", "WORLD"],
+        ),
+        TaskTest(
+            kind="functional",
+            name="пустой",
+            function="to_upper_list",
+            args=([],),
+            expected=[],
+        ),
+        TaskTest(
+            kind="functional",
+            name="русский",
+            function="to_upper_list",
+            args=(["привет"],),
+            expected=["ПРИВЕТ"],
+        ),
+    ),
+    xp=12,
+)
+
+
+# 28. Фильтрация чётных
+T_FILTER_EVEN = Task(
+    id="t-filter-even",
+    title="Только чётные",
+    description_md="""\
+Напиши функцию `only_even(numbers)`, которая возвращает **новый** список с
+чётными числами из исходного, в том же порядке.
+
+```python
+only_even([1, 2, 3, 4, 5, 6])   # [2, 4, 6]
+only_even([1, 3, 5])            # []
+only_even([])                   # []
+```
+
+Сделай через **list comprehension с условием**.
+""",
+    starter_code='def only_even(numbers):\n    pass\n',
+    solution_code='def only_even(numbers):\n    return [n for n in numbers if n % 2 == 0]\n',
+    solution_explanation_md="""\
+- В list comprehension можно добавить **фильтр** через `if ...`:
+  `[n for n in numbers if n % 2 == 0]`.
+- Это означает «возьми n из numbers, оставь только те, где n % 2 == 0».
+- Эквивалент полным кодом — `for` + `if` + `append`.
+""",
+    hints=(
+        "[n for n in numbers if условие].",
+        "Чётность — n % 2 == 0.",
+    ),
+    tests=(
+        TaskTest(
+            kind="functional",
+            name="смешанный",
+            function="only_even",
+            args=([1, 2, 3, 4, 5, 6],),
+            expected=[2, 4, 6],
+        ),
+        TaskTest(
+            kind="functional",
+            name="только нечётные",
+            function="only_even",
+            args=([1, 3, 5],),
+            expected=[],
+        ),
+        TaskTest(
+            kind="functional",
+            name="пустой",
+            function="only_even",
+            args=([],),
+            expected=[],
+        ),
+        TaskTest(
+            kind="functional",
+            name="нули",
+            function="only_even",
+            args=([0, 1, 2],),
+            expected=[0, 2],
+        ),
+    ),
+    xp=12,
+)
+
+
+# 29. Словарь: подсчёт частот
+T_COUNT_WORDS = Task(
+    id="t-count-words",
+    title="Частота слов",
+    description_md="""\
+Напиши функцию `word_freq(s)`, которая получает строку и возвращает **словарь**
+вида `{слово: количество}`. Слова разделены пробелами. Регистр игнорируем.
+
+```python
+word_freq("ab AB cd Ab")
+# {"ab": 3, "cd": 1}
+
+word_freq("")
+# {}
+```
+""",
+    starter_code='def word_freq(s):\n    pass\n',
+    solution_code=(
+        'def word_freq(s):\n'
+        '    result = {}\n'
+        '    for word in s.lower().split():\n'
+        '        result[word] = result.get(word, 0) + 1\n'
+        '    return result\n'
+    ),
+    solution_explanation_md="""\
+- `s.lower()` приводит к нижнему регистру.
+- `.split()` бьёт по пробелам, схлопывая повторы.
+- `result.get(word, 0)` — получить значение по ключу, если нет — `0`. Удобно для
+  «инкремента счётчика»: `result[word] = result.get(word, 0) + 1`.
+- Альтернатива — `from collections import Counter` (уже встроено в Python).
+""",
+    hints=(
+        "s.lower() и s.split() — твои друзья.",
+        "Используй dict.get(ключ, 0), чтобы избежать KeyError.",
+    ),
+    tests=(
+        TaskTest(
+            kind="functional",
+            name="разные регистры",
+            function="word_freq",
+            args=("ab AB cd Ab",),
+            expected={"ab": 3, "cd": 1},
+        ),
+        TaskTest(
+            kind="functional",
+            name="пустая",
+            function="word_freq",
+            args=("",),
+            expected={},
+        ),
+        TaskTest(
+            kind="functional",
+            name="одно слово",
+            function="word_freq",
+            args=("привет",),
+            expected={"привет": 1},
+        ),
+    ),
+    xp=15,
+)
+
+
+# 30. JSON: профиль
+T_JSON_PROFILE = Task(
+    id="t-json-profile",
+    title="Сборка профиля в JSON-строку",
+    description_md="""\
+Напиши функцию `to_json(name, age, hobbies)`. Она возвращает JSON-строку, которая
+описывает пользователя:
+
+```json
+{"name": "Кирилл", "age": 19, "hobbies": ["python", "music"]}
+```
+
+Используй модуль `json` из стандартной библиотеки. Не забудь
+`ensure_ascii=False`, иначе кириллица превратится в `\\uXXXX`.
+
+```python
+to_json("Кирилл", 19, ["python", "music"])
+# '{"name": "Кирилл", "age": 19, "hobbies": ["python", "music"]}'
+```
+""",
+    starter_code='import json\n\ndef to_json(name, age, hobbies):\n    pass\n',
+    solution_code=(
+        'import json\n'
+        '\n'
+        'def to_json(name, age, hobbies):\n'
+        '    data = {"name": name, "age": age, "hobbies": hobbies}\n'
+        '    return json.dumps(data, ensure_ascii=False)\n'
+    ),
+    solution_explanation_md="""\
+- Сначала собираем словарь Python — это не JSON, это просто dict.
+- `json.dumps(...)` превращает Python-структуру в **строку JSON**.
+- `ensure_ascii=False` оставляет кириллицу как есть. По умолчанию `json` всё
+  не-ASCII экранирует.
+- Обратное — `json.loads("...")` принимает JSON-строку и даёт обратно dict.
+""",
+    hints=(
+        "Соберите dict из аргументов.",
+        "json.dumps(dict, ensure_ascii=False) даёт строку.",
+    ),
+    tests=(
+        TaskTest(
+            kind="functional",
+            name="базовый",
+            function="to_json",
+            args=("Кирилл", 19, ["python", "music"]),
+            expected='{"name": "Кирилл", "age": 19, "hobbies": ["python", "music"]}',
+        ),
+        TaskTest(
+            kind="functional",
+            name="без хобби",
+            function="to_json",
+            args=("Аня", 25, []),
+            expected='{"name": "Аня", "age": 25, "hobbies": []}',
+        ),
+    ),
+    xp=15,
+)
+
+
 TASKS: tuple[Task, ...] = (
     T_PRINT_INTRO,
     T_GREETING,
@@ -711,5 +1885,24 @@ TASKS: tuple[Task, ...] = (
     T_GUESS,
     T_MULTI,
     T_AREA,
+    T_PRINT_CARD,
+    T_PRINT_ASCII,
+    T_SUM_INPUTS,
+    T_DIVMOD,
+    T_TRI,
+    T_FIZZBUZZ,
+    T_DIGIT_SUM,
+    T_REVERSE,
+    T_WORD_COUNT,
+    T_UNIQUE,
+    T_MIN_MAX,
+    T_AVERAGE,
+    T_COUNT_CHAR,
+    T_CALC,
+    T_ARGS_SUM,
+    T_MAP_UPPER,
+    T_FILTER_EVEN,
+    T_COUNT_WORDS,
+    T_JSON_PROFILE,
     T_BOT_ECHO,
 )
