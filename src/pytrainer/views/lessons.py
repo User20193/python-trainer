@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QPlainTextEdit,
     QPushButton,
+    QScrollArea,
     QSplitter,
     QStackedWidget,
     QTreeWidget,
@@ -244,9 +245,28 @@ class LessonWidget(QWidget):
         self._font_scale = 1.0
         self._lesson: Lesson | None = None
 
+        # Внешний скролл — единая прокрутка всего урока
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(24, 18, 24, 18)
-        outer.setSpacing(10)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+
+        self.scroll = QScrollArea()
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.scroll.setVerticalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        )
+        self.scroll.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+        outer.addWidget(self.scroll)
+
+        content = QWidget()
+        self.scroll.setWidget(content)
+
+        body = QVBoxLayout(content)
+        body.setContentsMargins(24, 18, 24, 18)
+        body.setSpacing(10)
 
         title_row = QHBoxLayout()
         self.section_label = QLabel("")
@@ -255,15 +275,17 @@ class LessonWidget(QWidget):
         self.section_label.setStyleSheet("padding: 0 0 0 0;")
         title_row.addWidget(self.section_label)
         title_row.addStretch(1)
-        outer.addLayout(title_row)
+        body.addLayout(title_row)
 
         self.title_label = QLabel("")
         self.title_label.setObjectName("title")
-        outer.addWidget(self.title_label)
+        self.title_label.setWordWrap(True)
+        body.addWidget(self.title_label)
 
         self.md_view = MarkdownView()
         self.md_view.set_link_handler(self._on_link)
-        outer.addWidget(self.md_view, stretch=2)
+        self.md_view.set_auto_height(True)
+        body.addWidget(self.md_view)
 
         # «Попробуй сам»
         self.try_card = QFrame()
@@ -290,7 +312,7 @@ class LessonWidget(QWidget):
         self.try_output.setReadOnly(True)
         self.try_output.setMaximumHeight(120)
         try_layout.addWidget(self.try_output)
-        outer.addWidget(self.try_card)
+        body.addWidget(self.try_card)
 
         # tasks of this lesson
         self.tasks_card = QFrame()
@@ -304,7 +326,34 @@ class LessonWidget(QWidget):
         self.tasks_box = QVBoxLayout()
         self.tasks_box.setSpacing(4)
         tasks_layout.addLayout(self.tasks_box)
-        outer.addWidget(self.tasks_card)
+        body.addWidget(self.tasks_card)
+
+        # «Как закрепить» (фиксированная подсказка снизу — методичка по уроку)
+        self.howto_card = QFrame()
+        self.howto_card.setObjectName("card")
+        howto_layout = QVBoxLayout(self.howto_card)
+        howto_layout.setContentsMargins(14, 10, 14, 10)
+        howto_layout.setSpacing(4)
+        howto_title = QLabel("📌 Как закрепить этот урок")
+        howto_title.setObjectName("h2")
+        howto_layout.addWidget(howto_title)
+        howto_text = QLabel(
+            "1. Прочитай теорию и **проговори про себя** ключевые слова.\n"
+            "2. Запусти «Попробуй сам» выше — поменяй пару значений и посмотри, "
+            "что изменится в выводе.\n"
+            "3. Открой «Песочница» и набери основные примеры урока **руками** "
+            "(не копируя). Так код запоминается в 10 раз лучше.\n"
+            "4. Реши все задачи к уроку. Если застрял — жми «💡 Подсказка», "
+            "потом «📖 Показать решение» с разбором.\n"
+            "5. Зайди в «Заметки» и одной-двумя фразами своими словами "
+            "опиши, что ты понял.\n"
+            "6. Подсветило незнакомое слово? Открой «Словарь» — там простые "
+            "определения с примерами."
+        )
+        howto_text.setWordWrap(True)
+        howto_text.setTextFormat(Qt.TextFormat.MarkdownText)
+        howto_layout.addWidget(howto_text)
+        body.addWidget(self.howto_card)
 
         # bottom actions
         bottom = QHBoxLayout()
@@ -313,7 +362,8 @@ class LessonWidget(QWidget):
         self.done_btn.setObjectName("success")
         self.done_btn.clicked.connect(self._mark_done)
         bottom.addWidget(self.done_btn)
-        outer.addLayout(bottom)
+        body.addLayout(bottom)
+        body.addStretch(1)
 
     def set_theme(self, palette: Palette, font_scale: float) -> None:
         self._palette = palette

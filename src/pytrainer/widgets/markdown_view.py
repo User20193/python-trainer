@@ -11,7 +11,7 @@ from pygments.lexers.python import PythonLexer
 from pygments.util import ClassNotFound
 from PySide6.QtCore import QUrl
 from PySide6.QtGui import QDesktopServices
-from PySide6.QtWidgets import QTextBrowser
+from PySide6.QtWidgets import QSizePolicy, QTextBrowser
 
 from ..theme import LIGHT, Palette
 
@@ -105,12 +105,43 @@ class MarkdownView(QTextBrowser):
         self.setOpenExternalLinks(False)
         self.anchorClicked.connect(self._on_anchor_clicked)
         self._on_link: callable | None = None
+        self._auto_height = False
+        self.document().documentLayout().documentSizeChanged.connect(
+            self._maybe_resize_to_content
+        )
+
+    def set_auto_height(self, enabled: bool) -> None:
+        """Make the view grow with its content (used inside outer QScrollArea)."""
+        self._auto_height = enabled
+        if enabled:
+            from PySide6.QtCore import Qt as _Qt
+
+            self.setVerticalScrollBarPolicy(_Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            self.setHorizontalScrollBarPolicy(_Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+            self._maybe_resize_to_content()
 
     def set_markdown(self, text: str, palette: Palette, font_scale: float = 1.0) -> None:
         self.setHtml(render_markdown(text, palette, font_scale))
+        self._maybe_resize_to_content()
 
     def set_link_handler(self, handler) -> None:
         self._on_link = handler
+
+    def resizeEvent(self, event) -> None:  # noqa: N802 (Qt API)
+        super().resizeEvent(event)
+        self._maybe_resize_to_content()
+
+    def _maybe_resize_to_content(self) -> None:
+        if not self._auto_height:
+            return
+        doc = self.document()
+        doc.setTextWidth(self.viewport().width())
+        h = int(doc.size().height()) + 8
+        if h < 60:
+            h = 60
+        self.setMinimumHeight(h)
+        self.setMaximumHeight(h)
 
     def _on_anchor_clicked(self, url: QUrl) -> None:
         s = url.toString()
