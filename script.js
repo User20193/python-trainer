@@ -204,31 +204,49 @@ let animationId;
 let lastFrameTime = 0;
 
 
-// Procedural Dialogue Engine
+
+// Procedural Absurd Dialogue Engine
 const DICTIONARY = {
-    greetings: ["Привет", "Здравствуй", "Хей", "Рад видеть", "О, привет"],
-    friendlyVerbs: ["обсудим", "посмотрим на", "как тебе", "слышал про", "давай похвалим"],
-    friendlyNouns: ["погоду", "новое кафе", "работу", "этот парк", "наших соседей"],
-    angryVerbs: ["ненавижу", "меня бесит", "уйди от", "хватит портить", "почему ты ломаешь"],
-    angryNouns: ["мой день", "всё вокруг", "мои планы", "мою жизнь", "эту улицу"],
-    begging: ["Пожалуйста, дай", "Умоляю, мне нужна", "Одолжи немного", "Спаси, нужна"],
-    beggingNouns: ["еда", "мелочь", "помощь", "вода"],
-    sick: ["Апчхи!", "Кхе-кхе...", "Ох, как всё болит...", "Голова раскалывается..."]
+    words: [
+        "кот", "борщ", "сингулярность", "тапочки", "космос", "пицца", "квант", "забор", "луна", "кирпич",
+        "пельмени", "робот", "носок", "дождь", "кактус", "шляпа", "трактор", "философия", "сыр", "колбаса",
+        "огурец", "карандаш", "матрица", "пылесос", "динозавр", "банан", "бульдозер", "макароны", "утка", "чайник",
+        "капибара", "майонез", "телевизор", "диван", "смысл", "безумие", "табуретка", "вилка", "кефир", "шаурма",
+        "прыгать", "спать", "летать", "жевать", "кричать", "бежать", "думать", "плакать", "чихать", "смеяться",
+        "красть", "строить", "ломать", "любить", "ждать", "искать", "падать", "кидать", "копать", "танцевать",
+        "мерцать", "булькать", "жужжать", "храпеть", "варить", "жарить", "шептать", "выть", "сиять", "глючить",
+        "зеленый", "мокрый", "странный", "квадратный", "вкусный", "холодный", "лысый", "пушистый", "глупый", "великий",
+        "быстрый", "мягкий", "острый", "ржавый", "соленый", "громкий", "тайный", "святой", "эпичный", "жидкий",
+        "колючий", "сладкий", "кривой", "железный", "деревянный", "золотой", "скользкий", "мутный", "липкий", "бодрый",
+        "внезапно", "вчера", "громко", "быстро", "печально", "весело", "тайно", "медленно", "вкусно", "странно",
+        "зачем-то", "никогда", "всегда", "уныло", "бодро", "криво", "яростно", "нежно", "тихо", "эпично",
+        "однако", "потому", "если", "хотя", "чтобы", "затем", "потом", "или", "и", "но",
+        "ай", "ой", "ого", "ух", "ага", "увы", "вау", "хм", "э", "брр",
+        "космонавт", "кастрюля", "бетон", "улитка", "голубь", "собака", "картошка", "трава", "солнце", "ветер",
+        "самолет", "колесо", "гвоздь", "молоток", "топор", "утюг", "окно", "дверь", "стена", "пол",
+        "потолок", "крыша", "труба", "коробка", "бумага", "книга", "буква", "цифра", "ноль", "единица",
+        "корова", "свинья", "лошадь", "мышь", "слон", "жираф", "бегемот", "крокодил", "змея", "паук",
+        "муха", "комар", "пчела", "оса", "шмель", "жук", "бабочка", "мотылек", "гусеница", "червяк",
+        "дерево", "куст", "цветок", "лист", "корень", "ветка", "ствол", "кора", "мох", "гриб",
+        "яблоко", "груша", "слива", "вишня", "черешня", "клубника", "малина", "смородина", "крыжовник", "арбуз",
+        "дыня", "тыква", "кабачок", "баклажан", "помидор", "морковь", "свекла", "лук", "чеснок", "перец",
+        "соль", "сахар", "мука", "масло", "хлеб", "булка", "печенье", "конфета", "шоколад", "мороженое",
+        "пить", "есть", "кусать", "лизать", "глотать", "плевать", "нюхать", "дышать", "кашлять", "зевать",
+        "моргать", "смотреть", "видеть", "слушать", "слышать", "трогать", "гладить", "чесать", "щипать", "бить"
+    ]
 };
 
-function generateDialogue(type) {
-    let pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
-
-    if (type === "friendly") {
-        return `${pick(DICTIONARY.greetings)}, ${pick(DICTIONARY.friendlyVerbs)} ${pick(DICTIONARY.friendlyNouns)}?`;
-    } else if (type === "angry") {
-        return `Я ${pick(DICTIONARY.angryVerbs)} ${pick(DICTIONARY.angryNouns)}!`;
-    } else if (type === "begging") {
-        return `${pick(DICTIONARY.begging)} ${pick(DICTIONARY.beggingNouns)}!`;
-    } else if (type === "sick") {
-        return pick(DICTIONARY.sick);
+function generateDialogue() {
+    let pick = () => DICTIONARY.words[Math.floor(Math.random() * DICTIONARY.words.length)];
+    let length = Math.floor(Math.random() * 4) + 2; // 2 to 5 words
+    let sentence = [];
+    for(let i = 0; i < length; i++) {
+        sentence.push(pick());
     }
-    return "...";
+    // Capitalize first word and add punctuation
+    let text = sentence.join(" ");
+    let punctuation = Math.random() > 0.7 ? "!" : (Math.random() > 0.5 ? "?" : ".");
+    return text.charAt(0).toUpperCase() + text.slice(1) + punctuation;
 }
 
 
@@ -266,6 +284,8 @@ class Person {
         this.memory = [];
         this.speechBubble = "";
         this.speechTimer = 0;
+        this.chatTimer = 0;
+        this.chatTarget = null;
 
         // Emergence stats/traits
         this.statusEffects = []; // e.g. "Cold", "Злой"
@@ -311,10 +331,28 @@ class Person {
     }
 
 
+
     update() {
         if (this.speechTimer > 0) this.speechTimer -= 5;
 
+        // Chatting state takes priority over movement and needs decay
+        if (this.chatTimer > 0) {
+            this.chatTimer -= 5;
+            this.currentAction = "Разговор";
+            // Occasionally say something new while chatting
+            if (Math.random() < 0.1) {
+                this.say(generateDialogue());
+            }
+            // Ensure target is also staying
+            if (this.chatTarget && this.chatTarget.chatTimer <= 0) {
+                this.chatTarget = null;
+                this.chatTimer = 0; // End chat if partner leaves
+            }
+            return;
+        }
+
         // Decay needs over time
+
         let eDecay = this.decay.energy;
         if (this.statusEffects.find(s => s.name === "Болен")) eDecay *= 2.0; // Sickness drains energy
 
@@ -371,31 +409,33 @@ class Person {
 
 
 
+
     checkDynamicEncounters() {
+        if (this.chatTimer > 0) return; // Don't interrupt existing chat
+
         let othersHere = people.filter(p => p !== this && p.x === this.x && p.y === this.y);
         for (let other of othersHere) {
+            if (other.chatTimer > 0) continue; // They are busy talking
+
             let rel = this.relationships[other.id] || 0;
 
             // Friends stopping to chat
             if (rel > 20 && Math.random() < 0.2) {
                 this.log(`Случайно встретил друга ${other.name}!`);
-                this.say(generateDialogue("friendly"));
-                if(Math.random() > 0.5) other.say(generateDialogue("friendly"));
-                this.social += 5;
-                other.social += 5;
-                // Minor delay (stop moving for a turn by not progressing path if we implement a wait timer,
-                // but just stat bump is fine for now to not break A* targeting)
+                this.startChat(other, 60); // Stop and chat for ~30 in-game minutes
+                return;
             }
 
             // Enemies fighting on sight!
             if (rel < -20 && Math.random() < 0.3) {
                 this.log(`Увидел врага ${other.name} и завязалась драка!`);
-                this.say(generateDialogue("angry"));
-                other.say(generateDialogue("angry"));
                 this.energy -= 10;
                 other.energy -= 10;
                 this.addStatus("Злой", 100);
                 other.addStatus("Злой", 100);
+
+                this.say(generateDialogue());
+                other.say(generateDialogue());
 
                 // Interrupt plans - run home!
                 this.currentAction = "Бегство";
@@ -405,21 +445,39 @@ class Person {
                 other.currentAction = "Бегство";
                 other.target = other.home;
                 other.path = window.findPath(other.x, other.y, other.home.x, other.home.y);
+                return;
             }
 
             // Desperate stealing
             if (this.hunger < 20 && this.money < 5 && other.money > 20 && Math.random() < 0.1) {
                 this.log(`Украл деньги у ${other.name} от отчаяния!`);
-                this.say("Прости, мне нужно выжить!");
-                other.say(generateDialogue("angry"));
+                this.say(generateDialogue());
+                other.say(generateDialogue());
                 this.money += 15;
                 other.money -= 15;
                 this.relationships[other.id] = rel - 50;
                 other.relationships[this.id] = (other.relationships[this.id] || 0) - 50;
                 other.addStatus("Злой", 200);
+                return;
             }
         }
     }
+
+    startChat(other, duration) {
+        this.chatTimer = duration;
+        this.chatTarget = other;
+        other.chatTimer = duration;
+        other.chatTarget = this;
+
+        this.currentAction = "Разговор";
+        other.currentAction = "Разговор";
+
+        this.say(generateDialogue());
+        setTimeout(() => {
+           if (other.chatTimer > 0) other.say(generateDialogue());
+        }, 1500); // Small visual delay
+    }
+
 
 
     decideAction() {
@@ -539,7 +597,7 @@ class Person {
                     if (this.hunger < 30 && other.hunger < 30 && other.money > 20 && this.money < 10 && action !== "Работа") {
                         if (Math.random() < 0.1) {
                             this.log(`Выпросил еду у ${other.name}.`);
-                            this.say(generateDialogue("begging"));
+                            this.say(generateDialogue());
                             other.say("Ладно, держи...");
                             this.hunger += 30;
                             other.money -= 10;
@@ -552,7 +610,7 @@ class Person {
                     if (this.statusEffects.find(s => s.name === "Злой")) {
                         if (Math.random() < 0.2) {
                             this.log(`Наорал на ${other.name}!`);
-                            this.say(generateDialogue("angry"));
+                            this.say(generateDialogue());
                             other.addStatus("Злой", 120); // Spread anger
                             this.relationships[other.id] = rel - 15;
                             this.statusEffects = this.statusEffects.filter(s => s.name !== "Злой"); // Relieved anger
@@ -563,16 +621,16 @@ class Person {
                     else if (Math.random() < 0.1) {
                         if (rel > 10) {
                             this.log(`Отлично поболтал с другом ${other.name}.`);
-                            this.say(generateDialogue("friendly"));
+                            this.say(generateDialogue());
                             this.social += 15;
                             this.energy += 2; // Good chats energize
                         } else if (other.statusEffects.find(s => s.name === "Болен")) {
                              this.log(`Говорил с ${other.name}, и он чихнул на меня.`);
-                             other.say(generateDialogue("sick"));
+                             other.say(generateDialogue());
                              if (Math.random() < 0.5) this.addStatus("Болен", 180);
                         } else {
                             this.log(`Поболтал с ${other.name}.`);
-                            this.say(generateDialogue("friendly"));
+                            this.say(generateDialogue());
                             this.social += 10;
                             this.relationships[other.id] = rel + 2;
                         }
@@ -581,8 +639,8 @@ class Person {
                     // Random argument
                     if (Math.random() < 0.005) {
                         this.log(`Подрался с ${other.name}!`);
-                        this.say(generateDialogue("angry"));
-                        other.say(generateDialogue("angry"));
+                        this.say(generateDialogue());
+                        other.say(generateDialogue());
                         this.addStatus("Злой", 120);
                         other.addStatus("Злой", 120);
                         this.relationships[other.id] = rel - 20;
@@ -636,6 +694,7 @@ class Person {
         if (this.currentAction === "Отдых в парке") emoji = "💬";
         if (this.currentAction === "В гостях") emoji = "🏠";
         if (this.currentAction === "Бегство") emoji = "🏃";
+        if (this.currentAction === "Разговор") emoji = "🗣️";
 
         if (this.statusEffects.find(s => s.name === "Злой")) emoji = "🤬"; // override with status emotion
         if (this.statusEffects.find(s => s.name === "Болен")) emoji = "🤒";
