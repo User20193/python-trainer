@@ -17,8 +17,12 @@
         <div class="sliders">
             <label>Friction: <input type="range" id="frictionSlider" min="1" max="99" value="50"></label>
             <label>Interaction Radius: <input type="range" id="radiusSlider" min="10" max="200" value="80"></label>
+            <label><input type="checkbox" id="trailsCheckbox" checked> Show Trails</label>
         </div>
-        <canvas id="simCanvas" width="800" height="600"></canvas>
+        <div class="canvas-container">
+            <canvas id="simCanvas" width="800" height="600"></canvas>
+            <div id="fpsCounter">FPS: 0</div>
+        </div>
         <p class="instructions">Click "Randomize Laws of Physics" to discover new emergent behaviors (organisms, crystals, swarms).</p>
     </div>
     <script src="script.js"></script>

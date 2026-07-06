@@ -68,10 +68,29 @@ input[type=range] {
     vertical-align: middle;
 }
 
+.canvas-container {
+    position: relative;
+    display: inline-block;
+}
+
 canvas {
     background-color: #000;
     border: 1px solid #333;
     box-shadow: 0 0 15px rgba(0,0,0,0.8);
+    display: block;
+}
+
+#fpsCounter {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    color: #00ff00;
+    font-family: monospace;
+    font-size: 14px;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 2px 5px;
+    border-radius: 3px;
+    pointer-events: none;
 }
 
 .instructions {
