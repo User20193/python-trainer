@@ -60,22 +60,89 @@ addZone(COLS - 10, ROWS - 8, 6, 6, WORK, window.works);
 addZone(Math.floor(COLS/2) + 2, 5, 5, 5, CAFE, window.cafes);
 addZone(Math.floor(COLS/4) + 2, Math.floor(ROWS/2) + 2, 6, 6, PARK, window.parks);
 
+
 window.drawMap = function() {
+    let hour = gameTime / 60;
+    let isNight = hour < 7 || hour > 19;
+
     for (let y = 0; y < ROWS; y++) {
         for (let x = 0; x < COLS; x++) {
             let tile = window.cityMap[y][x];
-            if (tile === EMPTY) ctx.fillStyle = '#1e1e2e';
-            else if (tile === ROAD) ctx.fillStyle = '#313244';
-            else if (tile === HOME) ctx.fillStyle = '#3b82f6';
-            else if (tile === WORK) ctx.fillStyle = '#8b5cf6';
-            else if (tile === CAFE) ctx.fillStyle = '#ef4444';
-            else if (tile === PARK) ctx.fillStyle = '#22c55e';
+            let px = x * window.TILE_SIZE;
+            let py = y * window.TILE_SIZE;
 
-            ctx.fillRect(x * window.TILE_SIZE, y * window.TILE_SIZE, window.TILE_SIZE, window.TILE_SIZE);
+            // Base ground
+            if (tile === EMPTY) {
+                ctx.fillStyle = '#1e1e2e';
+                ctx.fillRect(px, py, window.TILE_SIZE, window.TILE_SIZE);
+                // Grass details randomly
+                if ((x*y) % 7 === 0) {
+                    ctx.fillStyle = '#262638';
+                    ctx.fillRect(px + 4, py + 4, 4, 4);
+                }
+            }
+            else if (tile === ROAD) {
+                ctx.fillStyle = '#313244';
+                ctx.fillRect(px, py, window.TILE_SIZE, window.TILE_SIZE);
+                // Road markings
+                ctx.fillStyle = '#45475a';
+                if (x % 2 === 0 && window.cityMap[y][x-1] === ROAD && window.cityMap[y][x+1] === ROAD) {
+                    ctx.fillRect(px + window.TILE_SIZE/4, py + window.TILE_SIZE/2 - 1, window.TILE_SIZE/2, 2);
+                }
+                if (y % 2 === 0 && window.cityMap[y-1] && window.cityMap[y-1][x] === ROAD && window.cityMap[y+1] && window.cityMap[y+1][x] === ROAD) {
+                    ctx.fillRect(px + window.TILE_SIZE/2 - 1, py + window.TILE_SIZE/4, 2, window.TILE_SIZE/2);
+                }
+            }
+            else if (tile === HOME) {
+                ctx.fillStyle = '#3b82f6';
+                ctx.fillRect(px, py, window.TILE_SIZE, window.TILE_SIZE);
+                // Roof shadow
+                ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                ctx.fillRect(px, py + window.TILE_SIZE/2, window.TILE_SIZE, window.TILE_SIZE/2);
+                // Window light
+                if (isNight) {
+                    ctx.fillStyle = '#fde047'; // yellow light
+                    ctx.fillRect(px + 4, py + 4, 6, 6);
+                }
+            }
+            else if (tile === WORK) {
+                ctx.fillStyle = '#8b5cf6';
+                ctx.fillRect(px, py, window.TILE_SIZE, window.TILE_SIZE);
+                ctx.fillStyle = 'rgba(255,255,255,0.1)';
+                ctx.fillRect(px + 2, py + 2, window.TILE_SIZE - 4, window.TILE_SIZE - 4);
+            }
+            else if (tile === CAFE) {
+                ctx.fillStyle = '#ef4444';
+                ctx.fillRect(px, py, window.TILE_SIZE, window.TILE_SIZE);
+                // Awning
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(px, py, window.TILE_SIZE, 4);
+                // Window light
+                if (isNight) {
+                    ctx.fillStyle = '#fde047';
+                    ctx.fillRect(px + 4, py + 8, window.TILE_SIZE - 8, 8);
+                }
+            }
+            else if (tile === PARK) {
+                ctx.fillStyle = '#22c55e';
+                ctx.fillRect(px, py, window.TILE_SIZE, window.TILE_SIZE);
+                // Tree
+                if ((x+y) % 2 === 0) {
+                    ctx.fillStyle = '#16a34a';
+                    ctx.beginPath();
+                    ctx.arc(px + window.TILE_SIZE/2, py + window.TILE_SIZE/2, window.TILE_SIZE/3, 0, Math.PI*2);
+                    ctx.fill();
+                    // Tree shadow
+                    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                    ctx.beginPath();
+                    ctx.arc(px + window.TILE_SIZE/2 + 2, py + window.TILE_SIZE/2 + 2, window.TILE_SIZE/3, 0, Math.PI*2);
+                    ctx.fill();
+                }
+            }
 
-            // Draw grid
+            // Grid lines
             ctx.strokeStyle = 'rgba(255,255,255,0.02)';
-            ctx.strokeRect(x * window.TILE_SIZE, y * window.TILE_SIZE, window.TILE_SIZE, window.TILE_SIZE);
+            ctx.strokeRect(px, py, window.TILE_SIZE, window.TILE_SIZE);
         }
     }
 };
@@ -147,7 +214,13 @@ class Person {
         let home = window.homes[Math.floor(Math.random() * window.homes.length)];
         this.x = home.x;
         this.y = home.y;
+
         this.home = home;
+
+        // Visual Coordinates for Lerp
+        this.visualX = this.x;
+        this.visualY = this.y;
+
 
         // Needs (0 to 100)
         this.energy = 100;
@@ -467,11 +540,23 @@ class Person {
         }
     }
 
+
     draw(ctx) {
+        let vx = this.visualX * window.TILE_SIZE;
+        let vy = this.visualY * window.TILE_SIZE;
+
+        // Shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.beginPath();
+        ctx.arc(vx + window.TILE_SIZE / 2 + 2,
+                vy + window.TILE_SIZE / 2 + 2,
+                window.TILE_SIZE / 3, 0, Math.PI * 2);
+        ctx.fill();
+
         // Draw person as a circle
         ctx.beginPath();
-        ctx.arc(this.x * window.TILE_SIZE + window.TILE_SIZE / 2,
-                this.y * window.TILE_SIZE + window.TILE_SIZE / 2,
+        ctx.arc(vx + window.TILE_SIZE / 2,
+                vy + window.TILE_SIZE / 2,
                 window.TILE_SIZE / 3, 0, Math.PI * 2);
 
         if (selectedPerson === this) {
@@ -504,10 +589,11 @@ class Person {
         if (emoji) {
             ctx.font = "16px Arial";
             ctx.textAlign = "center";
-            ctx.fillText(emoji, this.x * window.TILE_SIZE + window.TILE_SIZE / 2,
-                               this.y * window.TILE_SIZE + 10);
+            ctx.fillText(emoji, vx + window.TILE_SIZE / 2,
+                               vy + 10);
         }
     }
+
 }
 
 let people = [];
@@ -595,13 +681,47 @@ function gameLoop(timestamp) {
     ctx.clearRect(0, 0, window.width, window.height);
     window.drawMap();
 
+
     // Sort people by Y so they draw nicely
-    people.sort((a,b) => a.y - b.y);
+    people.sort((a,b) => a.visualY - b.visualY);
     for (let p of people) {
+        // Lerp movement
+        if (isRunning) {
+            p.visualX += (p.x - p.visualX) * 0.2;
+            p.visualY += (p.y - p.visualY) * 0.2;
+        }
         p.draw(ctx);
     }
 
+    // Day/Night Cycle Overlay
+    let hour = gameTime / 60;
+    let darkness = 0;
+    if (hour < 6) darkness = 0.6; // Night
+    else if (hour < 8) darkness = 0.6 - (hour - 6) * 0.3; // Sunrise
+    else if (hour > 18 && hour < 20) darkness = (hour - 18) * 0.3; // Sunset
+    else if (hour >= 20) darkness = 0.6; // Night
+
+    if (darkness > 0) {
+        ctx.fillStyle = `rgba(10, 10, 30, ${darkness})`;
+        ctx.fillRect(0, 0, window.width, window.height);
+    }
+
+    // Rain Effects
+    if (window.weather === "Дождь") {
+        ctx.strokeStyle = "rgba(150, 180, 255, 0.4)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let i = 0; i < 100; i++) {
+            let rx = Math.random() * window.width;
+            let ry = Math.random() * window.height;
+            ctx.moveTo(rx, ry);
+            ctx.lineTo(rx - 5, ry + 15);
+        }
+        ctx.stroke();
+    }
+
     animationId = requestAnimationFrame(gameLoop);
+
 }
 
 // Events
