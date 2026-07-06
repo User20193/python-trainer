@@ -22,7 +22,7 @@
             </div>
 
             <div class="canvas-container">
-                <canvas id="simCanvas" width="800" height="600"></canvas>
+                <canvas id="simCanvas" width="1000" height="700"></canvas>
             </div>
             <p class="hint">Нажмите на любого персонажа, чтобы увидеть его мысли, потребности и память.</p>
         </div>
@@ -31,9 +31,15 @@
             <h2>Инспектор</h2>
             <div class="inspector" id="inspectorPanel">
                 <p class="inspector-hint">Выберите персонажа...</p>
+
                 <div class="inspector-data" style="display: none;">
-                    <h3 id="insName">Имя</h3>
-                    <p class="status">💭 "<span id="insAction">Sleeping</span>"</p>
+                    <div class="passport" style="background: #1b1b26; padding: 10px; border-radius: 6px; border: 1px solid #4ade80; margin-bottom: 15px;">
+                        <h4 style="margin-top: 0; color: #4ade80; border-bottom: 1px solid #2f362f; padding-bottom: 5px;">Паспорт</h4>
+                        <p style="margin: 5px 0; font-size: 0.9em; font-weight: bold;" id="insFIO">ФИО</p>
+                        <p style="margin: 5px 0; font-size: 0.85em; color: #d1d5db;" id="insAge">Возраст</p>
+                    </div>
+                    <p class="status">💭 "<span id="insAction">Сон</span>"</p>
+
 
                     <hr>
                     <h4>Потребности</h4>
@@ -68,6 +74,8 @@
                 <li><span class="color-box" style="background: #8b5cf6;"></span> Офис (Работа)</li>
                 <li><span class="color-box" style="background: #ef4444;"></span> Кафе (Еда)</li>
                 <li><span class="color-box" style="background: #22c55e;"></span> Парк (Общение)</li>
+                <li><span class="color-box" style="background: #f43f5e;"></span> Больница (Лечение)</li>
+                <li><span class="color-box" style="background: #0ea5e9;"></span> Магазин (Покупки)</li>
             </ul>
         </div>
 

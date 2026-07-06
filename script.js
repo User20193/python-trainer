@@ -9,18 +9,25 @@ window.height = canvas.height;
 const COLS = Math.floor(window.width / window.TILE_SIZE);
 const ROWS = Math.floor(window.height / window.TILE_SIZE);
 
+
 const EMPTY = 0;
 const ROAD = 1;
 const HOME = 2; // Blue
 const WORK = 3; // Purple
 const CAFE = 4; // Red
 const PARK = 5; // Green
+const HOSPITAL = 6; // Pink
+const SHOP = 7; // Cyan
 
 window.cityMap = [];
 window.homes = [];
 window.works = [];
 window.cafes = [];
 window.parks = [];
+window.hospitals = [];
+window.shops = [];
+
+
 
 // Initialize map
 for (let y = 0; y < ROWS; y++) {
@@ -31,11 +38,24 @@ for (let y = 0; y < ROWS; y++) {
     window.cityMap.push(row);
 }
 
-// Draw roads
-for (let y = 5; y < ROWS - 5; y++) window.cityMap[y][Math.floor(COLS/2)] = ROAD;
-for (let x = 5; x < COLS - 5; x++) window.cityMap[Math.floor(ROWS/2)][x] = ROAD;
-for (let y = 10; y < ROWS - 10; y++) window.cityMap[y][Math.floor(COLS/4)] = ROAD;
-for (let y = 10; y < ROWS - 10; y++) window.cityMap[y][Math.floor(COLS*3/4)] = ROAD;
+// Draw main roads (cross pattern + outer ring)
+for (let y = 4; y < ROWS - 4; y++) {
+    window.cityMap[y][Math.floor(COLS/2)] = ROAD;
+    window.cityMap[y][Math.floor(COLS/2) - 1] = ROAD; // Wider roads
+}
+for (let x = 4; x < COLS - 4; x++) {
+    window.cityMap[Math.floor(ROWS/2)][x] = ROAD;
+    window.cityMap[Math.floor(ROWS/2) - 1][x] = ROAD;
+}
+for (let y = 8; y < ROWS - 8; y++) {
+    window.cityMap[y][Math.floor(COLS/4)] = ROAD;
+    window.cityMap[y][Math.floor(COLS*3/4)] = ROAD;
+}
+for (let x = 8; x < COLS - 8; x++) {
+    window.cityMap[Math.floor(ROWS/4)][x] = ROAD;
+    window.cityMap[Math.floor(ROWS*3/4)][x] = ROAD;
+}
+
 
 // Function to add zones
 function addZone(x, y, w, h, type, array) {
@@ -49,16 +69,21 @@ function addZone(x, y, w, h, type, array) {
     }
 }
 
-// Add zones
-addZone(2, 2, 4, 4, HOME, window.homes);
-addZone(10, 2, 4, 4, HOME, window.homes);
-addZone(COLS - 8, 2, 4, 4, HOME, window.homes);
+// Add zones (spreading them out on the larger map)
+addZone(2, 2, 5, 5, HOME, window.homes);
+addZone(COLS - 7, 2, 5, 5, HOME, window.homes);
+addZone(2, ROWS - 7, 5, 5, HOME, window.homes);
+addZone(Math.floor(COLS/4) + 2, Math.floor(ROWS/4) + 2, 4, 4, HOME, window.homes);
 
-addZone(2, ROWS - 8, 6, 6, WORK, window.works);
-addZone(COLS - 10, ROWS - 8, 6, 6, WORK, window.works);
+addZone(COLS - 12, ROWS - 12, 8, 8, WORK, window.works);
+addZone(10, Math.floor(ROWS/2) + 2, 6, 6, WORK, window.works);
 
-addZone(Math.floor(COLS/2) + 2, 5, 5, 5, CAFE, window.cafes);
-addZone(Math.floor(COLS/4) + 2, Math.floor(ROWS/2) + 2, 6, 6, PARK, window.parks);
+addZone(Math.floor(COLS/2) + 2, 5, 6, 6, CAFE, window.cafes);
+addZone(Math.floor(COLS/4) + 2, Math.floor(ROWS*3/4) + 2, 7, 7, PARK, window.parks);
+
+addZone(5, Math.floor(ROWS/4) + 2, 6, 6, HOSPITAL, window.hospitals);
+addZone(Math.floor(COLS*3/4) + 2, Math.floor(ROWS/2) + 2, 6, 6, SHOP, window.shops);
+
 
 
 window.drawMap = function() {
@@ -123,6 +148,7 @@ window.drawMap = function() {
                     ctx.fillRect(px + 4, py + 8, window.TILE_SIZE - 8, 8);
                 }
             }
+
             else if (tile === PARK) {
                 ctx.fillStyle = '#22c55e';
                 ctx.fillRect(px, py, window.TILE_SIZE, window.TILE_SIZE);
@@ -139,6 +165,22 @@ window.drawMap = function() {
                     ctx.fill();
                 }
             }
+            else if (tile === HOSPITAL) {
+                ctx.fillStyle = '#f43f5e'; // Pink-red
+                ctx.fillRect(px, py, window.TILE_SIZE, window.TILE_SIZE);
+                // Cross
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(px + window.TILE_SIZE/2 - 2, py + 4, 4, window.TILE_SIZE - 8);
+                ctx.fillRect(px + 4, py + window.TILE_SIZE/2 - 2, window.TILE_SIZE - 8, 4);
+            }
+            else if (tile === SHOP) {
+                ctx.fillStyle = '#0ea5e9'; // Cyan
+                ctx.fillRect(px, py, window.TILE_SIZE, window.TILE_SIZE);
+                ctx.fillStyle = 'rgba(255,255,255,0.2)';
+                // Stripes
+                if (x % 2 === 0) ctx.fillRect(px, py, window.TILE_SIZE, window.TILE_SIZE);
+            }
+
 
             // Grid lines
             ctx.strokeStyle = 'rgba(255,255,255,0.02)';
@@ -232,7 +274,16 @@ const DICTIONARY = {
         "дыня", "тыква", "кабачок", "баклажан", "помидор", "морковь", "свекла", "лук", "чеснок", "перец",
         "соль", "сахар", "мука", "масло", "хлеб", "булка", "печенье", "конфета", "шоколад", "мороженое",
         "пить", "есть", "кусать", "лизать", "глотать", "плевать", "нюхать", "дышать", "кашлять", "зевать",
-        "моргать", "смотреть", "видеть", "слушать", "слышать", "трогать", "гладить", "чесать", "щипать", "бить"
+        "моргать", "смотреть", "видеть", "слушать", "слышать", "трогать", "гладить", "чесать", "щипать", "бить",
+
+        // Expansion words
+        "магазин", "больница", "таблетка", "врач", "покупки", "касса", "деньги", "карта", "шприц", "градусник",
+        "лекарство", "сироп", "здоровье", "хлеб", "молоко", "яйца", "рыба", "мясо", "сыр", "колбаса",
+        "купить", "продать", "лечить", "болеть", "выздоравливать", "платить", "брать", "отдавать", "считать",
+        "дорого", "дешево", "больно", "здорово", "полезно", "вредно", "сладко", "горько", "кисло",
+        "аптека", "продукт", "товар", "пакет", "скидка", "акция", "чек", "сдача", "очередь", "кассир",
+        "пациент", "диагноз", "рецепт", "витамин", "бинт", "пластырь", "укол", "операция", "медсестра"
+
     ]
 };
 
@@ -250,12 +301,83 @@ function generateDialogue() {
 }
 
 
-const NAMES = ["Алиса", "Борис", "Виктор", "Даша", "Елена", "Федор", "Галина", "Харитон"];
+
+const NAMES_FIRST = ["Иван", "Александр", "Дмитрий", "Сергей", "Андрей", "Алексей", "Максим", "Евгений", "Михаил", "Владимир", "Анна", "Мария", "Елена", "Дарья", "Ольга", "Екатерина", "Наталья", "Татьяна", "Юлия", "Анастасия"];
+const NAMES_LAST = ["Иванов", "Смирнов", "Кузнецов", "Попов", "Васильев", "Петров", "Соколов", "Михайлов", "Новиков", "Федоров", "Морозов", "Волков", "Алексеев", "Лебедев", "Семенов", "Егоров", "Павлов", "Козлов", "Степанов", "Николаев"];
+const NAMES_PATRO = ["Иванович", "Александрович", "Дмитриевич", "Сергеевич", "Андреевич", "Алексеевич", "Максимович", "Евгеньевич", "Михайлович", "Владимирович"];
+const NAMES_PATRO_F = ["Ивановна", "Александровна", "Дмитриевна", "Сергеевна", "Андреевна", "Алексеевна", "Максимовна", "Евгеньевна", "Михайловна", "Владимировна"];
+
+function generateFIO() {
+    let first = NAMES_FIRST[Math.floor(Math.random() * NAMES_FIRST.length)];
+    let last = NAMES_LAST[Math.floor(Math.random() * NAMES_LAST.length)];
+
+    // Simple gender check based on first name ending (not perfect but ok for mock data)
+    let isFemale = first.endsWith('а') || first.endsWith('я');
+
+    if (isFemale && !last.endsWith('а') && !last.endsWith('в')) {
+         // handle genderizing last name naively
+         if(last.endsWith('ов') || last.endsWith('ев') || last.endsWith('ин')) {
+             last += 'а';
+         }
+    } else if (isFemale && (last.endsWith('ов') || last.endsWith('ев'))) {
+         last += 'а';
+    }
+
+    let patro = isFemale ?
+                NAMES_PATRO_F[Math.floor(Math.random() * NAMES_PATRO_F.length)] :
+                NAMES_PATRO[Math.floor(Math.random() * NAMES_PATRO.length)];
+
+    return `${last} ${first} ${patro}`;
+}
+
 
 class Person {
+
     constructor(id) {
         this.id = id;
-        this.name = NAMES[id % NAMES.length];
+        this.fio = generateFIO();
+        this.name = this.fio.split(" ")[1] || this.fio; // Short name for logs
+
+        this.age = Math.floor(Math.random() * 50) + 18; // 18 to 67 years old
+
+
+        // Generate a 4x4 unique pixel art avatar
+        this.pixels = [];
+        let baseColor = `hsl(${Math.random() * 360}, 70%, 60%)`;
+
+        // Assign Profession
+        this.profession = "Безработный";
+        this.workplace = null;
+        if (id % 3 === 0) {
+            this.profession = "Офис-менеджер";
+            this.workplace = window.works[Math.floor(Math.random() * window.works.length)];
+        } else if (id % 3 === 1) {
+            this.profession = "Врач";
+            this.workplace = window.hospitals[Math.floor(Math.random() * window.hospitals.length)];
+            baseColor = '#ffffff'; // Doctors wear white
+        } else {
+            this.profession = "Продавец";
+            this.workplace = window.shops[Math.floor(Math.random() * window.shops.length)];
+            baseColor = '#0ea5e9'; // Shop uniform
+        }
+
+        let accentColor = `hsl(${Math.random() * 360}, 80%, 40%)`;
+        let skinColor = Math.random() > 0.5 ? '#fcd34d' : '#f87171'; // basic skin tones
+
+        for (let i = 0; i < 4; i++) {
+            let row = [];
+            for (let j = 0; j < 4; j++) {
+                if (i === 0 && (j === 1 || j === 2)) row.push(skinColor); // head
+                else if (i === 1) row.push(baseColor); // shoulders/chest
+                else if (i === 2 && (j === 1 || j === 2)) row.push(baseColor); // body
+                else if (i === 2 && (j === 0 || j === 3)) row.push(skinColor); // hands
+                else if (i === 3 && (j === 1 || j === 2)) row.push(accentColor); // legs
+                else row.push('transparent');
+            }
+            this.pixels.push(row);
+        }
+
+
 
         // Assign a random home
         let home = window.homes[Math.floor(Math.random() * window.homes.length)];
@@ -410,24 +532,26 @@ class Person {
 
 
 
+
     checkDynamicEncounters() {
         if (this.chatTimer > 0) return; // Don't interrupt existing chat
 
-        let othersHere = people.filter(p => p !== this && p.x === this.x && p.y === this.y);
+        // Find people on same or adjacent tiles to increase interaction frequency
+        let othersHere = people.filter(p => p !== this && Math.abs(p.x - this.x) <= 1 && Math.abs(p.y - this.y) <= 1);
         for (let other of othersHere) {
-            if (other.chatTimer > 0) continue; // They are busy talking
+            if (other.chatTimer > 0) continue;
 
             let rel = this.relationships[other.id] || 0;
 
-            // Friends stopping to chat
-            if (rel > 20 && Math.random() < 0.2) {
+            // Friends stopping to chat (higher chance now)
+            if (rel > 10 && Math.random() < 0.4) {
                 this.log(`Случайно встретил друга ${other.name}!`);
-                this.startChat(other, 60); // Stop and chat for ~30 in-game minutes
+                this.startChat(other, 80);
                 return;
             }
 
             // Enemies fighting on sight!
-            if (rel < -20 && Math.random() < 0.3) {
+            if (rel < -10 && Math.random() < 0.5) {
                 this.log(`Увидел врага ${other.name} и завязалась драка!`);
                 this.energy -= 10;
                 other.energy -= 10;
@@ -437,7 +561,6 @@ class Person {
                 this.say(generateDialogue());
                 other.say(generateDialogue());
 
-                // Interrupt plans - run home!
                 this.currentAction = "Бегство";
                 this.target = this.home;
                 this.path = window.findPath(this.x, this.y, this.home.x, this.home.y);
@@ -449,7 +572,7 @@ class Person {
             }
 
             // Desperate stealing
-            if (this.hunger < 20 && this.money < 5 && other.money > 20 && Math.random() < 0.1) {
+            if (this.hunger < 30 && this.money < 10 && other.money > 20 && Math.random() < 0.2) {
                 this.log(`Украл деньги у ${other.name} от отчаяния!`);
                 this.say(generateDialogue());
                 other.say(generateDialogue());
@@ -458,6 +581,15 @@ class Person {
                 this.relationships[other.id] = rel - 50;
                 other.relationships[this.id] = (other.relationships[this.id] || 0) - 50;
                 other.addStatus("Злой", 200);
+                return;
+            }
+
+            // Random neutral chat with strangers
+            if (Math.random() < 0.05) {
+                this.log(`Остановился поболтать с ${other.name}.`);
+                this.startChat(other, 50);
+                this.relationships[other.id] = rel + 5;
+                other.relationships[this.id] = (other.relationships[this.id] || 0) + 5;
                 return;
             }
         }
@@ -504,16 +636,18 @@ class Person {
             targetLocation = window.cafes[Math.floor(Math.random() * window.cafes.length)];
         }
 
+
         // 3. WORK (Priority during work hours if needs are somewhat met)
         let workUtility = 0;
-        if (hour >= 9 && hour <= 17 && this.energy > 30 && this.hunger > 30) {
+        if (hour >= 9 && hour <= 17 && this.energy > 30 && this.hunger > 30 && this.profession !== "Безработный") {
             workUtility = 80;
         }
         if (workUtility > highestUtility) {
             highestUtility = workUtility;
-            action = "Работа";
-            targetLocation = window.works[Math.floor(Math.random() * window.works.length)];
+            action = "Работа (" + this.profession + ")";
+            targetLocation = this.workplace;
         }
+
 
         // 4. SOCIALIZE (If lonely and free time)
         let socialUtility = (100 - this.social) * 1.2;
@@ -545,6 +679,30 @@ class Person {
         }
 
 
+
+        // 5. HOSPITAL (High priority if sick)
+        let hospitalUtility = 0;
+        if (this.statusEffects.find(s => s.name === "Болен")) {
+            hospitalUtility = 90;
+        }
+        if (hospitalUtility > highestUtility) {
+            highestUtility = hospitalUtility;
+            action = "Лечится";
+            targetLocation = window.hospitals[Math.floor(Math.random() * window.hospitals.length)];
+        }
+
+        // 6. SHOP (Medium priority if money is ok and hunger is ok)
+        let shopUtility = 0;
+        if (this.money > 20 && this.hunger > 60 && Math.random() < 0.05) {
+            shopUtility = 60; // Random desire to shop
+        }
+        if (shopUtility > highestUtility) {
+            highestUtility = shopUtility;
+            action = "Шопинг";
+            targetLocation = window.shops[Math.floor(Math.random() * window.shops.length)];
+        }
+
+
         // Execution of Action
         if (this.currentAction !== action) {
             this.currentAction = action;
@@ -573,7 +731,8 @@ class Person {
                     this.addStatus("Болен", 120); // Sick for 2 hours
                 }
             }
-            if (action === "Работа") {
+
+            if (action.startsWith("Работа")) {
                 this.money += 2;
                 this.energy -= 0.1;
                 this.social -= 0.1;
@@ -581,6 +740,27 @@ class Person {
                     this.money -= 1; // Angry workers perform poorly
                 }
             }
+
+
+
+            if (action === "Лечится") {
+                if (this.money >= 5) {
+                    this.money -= 5;
+                    this.statusEffects = this.statusEffects.filter(s => s.name !== "Болен");
+                    this.log("Вылечился в больнице.");
+                } else {
+                    this.log("Не хватило денег на лечение.");
+                }
+            }
+            if (action === "Шопинг") {
+                if (this.money >= 10) {
+                    this.money -= 10;
+                    this.social += 5; // Retail therapy
+                    this.energy -= 2;
+                    this.log("Сделал покупки в магазине.");
+                }
+            }
+
 
             // Emergent Interactions Engine
             let othersHere = people.filter(p => p !== this && p.x === this.x && p.y === this.y && p.currentAction === this.currentAction);
@@ -654,6 +834,7 @@ class Person {
     }
 
 
+
     draw(ctx) {
         let vx = this.visualX * window.TILE_SIZE;
         let vy = this.visualY * window.TILE_SIZE;
@@ -661,39 +842,43 @@ class Person {
         // Shadow
         ctx.fillStyle = 'rgba(0,0,0,0.3)';
         ctx.beginPath();
-        ctx.arc(vx + window.TILE_SIZE / 2 + 2,
-                vy + window.TILE_SIZE / 2 + 2,
+        ctx.arc(vx + window.TILE_SIZE / 2,
+                vy + window.TILE_SIZE - 2,
                 window.TILE_SIZE / 3, 0, Math.PI * 2);
         ctx.fill();
 
-        // Draw person as a circle
-        ctx.beginPath();
-        ctx.arc(vx + window.TILE_SIZE / 2,
-                vy + window.TILE_SIZE / 2,
-                window.TILE_SIZE / 3, 0, Math.PI * 2);
+        // Draw 4x4 Pixel Art
+        let pSize = window.TILE_SIZE / 4;
+        for (let i = 0; i < 4; i++) {
+            for (let j = 0; j < 4; j++) {
+                if (this.pixels[i][j] !== 'transparent') {
+                    ctx.fillStyle = this.pixels[i][j];
+                    ctx.fillRect(vx + j * pSize, vy + i * pSize, pSize, pSize);
 
-        if (selectedPerson === this) {
-            ctx.fillStyle = '#fcd34d'; // Highlight selected
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 2;
-        } else {
-            ctx.fillStyle = '#cbd5e1';
-            ctx.strokeStyle = '#333';
-            ctx.lineWidth = 1;
+                    // Highlight selected outline
+                    if (selectedPerson === this) {
+                        ctx.strokeStyle = '#fff';
+                        ctx.lineWidth = 1;
+                        ctx.strokeRect(vx + j * pSize, vy + i * pSize, pSize, pSize);
+                    }
+                }
+            }
         }
 
-        ctx.fill();
-        ctx.stroke();
 
 
         // Draw emoji bubble based on action
         let emoji = "";
         if (this.currentAction === "Сон") emoji = "💤";
         if (this.currentAction === "Ест в кафе") emoji = "🍔";
-        if (this.currentAction === "Работа") emoji = "💼";
+        if (this.currentAction.startsWith("Работа")) emoji = "💼";
         if (this.currentAction === "Отдых в парке") emoji = "💬";
+
         if (this.currentAction === "В гостях") emoji = "🏠";
+        if (this.currentAction === "Лечится") emoji = "🏥";
+        if (this.currentAction === "Шопинг") emoji = "🛍️";
         if (this.currentAction === "Бегство") emoji = "🏃";
+
         if (this.currentAction === "Разговор") emoji = "🗣️";
 
         if (this.statusEffects.find(s => s.name === "Злой")) emoji = "🤬"; // override with status emotion
@@ -754,11 +939,18 @@ function formatTime(minutes) {
 
 
 function updateInspector() {
+
+
     if (selectedPerson) {
         insHint.style.display = 'none';
         insData.style.display = 'block';
 
-        insName.textContent = selectedPerson.name;
+        let fioEl = document.getElementById('insFIO');
+        if(fioEl) fioEl.textContent = selectedPerson.fio + " (" + selectedPerson.profession + ")";
+        let ageEl = document.getElementById('insAge');
+        if(ageEl) ageEl.textContent = `Возраст: ${selectedPerson.age} лет`;
+
+
 
         let statuses = selectedPerson.statusEffects.map(s => s.name).join(", ");
         let statStr = statuses ? ` [${statuses}]` : "";
