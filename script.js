@@ -1,15 +1,38 @@
 const canvas = document.getElementById('simCanvas');
 const ctx = canvas.getContext('2d');
 
+// UI Elements
 const toggleBtn = document.getElementById('toggleBtn');
 const resetBtn = document.getElementById('resetBtn');
+const catastropheBtn = document.getElementById('catastropheBtn');
 const debugCheckbox = document.getElementById('debugCheckbox');
+
+const mutRateSlider = document.getElementById('mutRateSlider');
+const foodRateSlider = document.getElementById('foodRateSlider');
+const poisonRateSlider = document.getElementById('poisonRateSlider');
+const mutRateVal = document.getElementById('mutRateVal');
+const foodRateVal = document.getElementById('foodRateVal');
+const poisonRateVal = document.getElementById('poisonRateVal');
 
 const popCountEl = document.getElementById('popCount');
 const foodCountEl = document.getElementById('foodCount');
 const poisonCountEl = document.getElementById('poisonCount');
 const maxAgeEl = document.getElementById('maxAge');
 const fpsCounter = document.getElementById('fpsCounter');
+
+const avgFoodAttrBar = document.getElementById('avgFoodAttrBar');
+const avgPoisonAttrBar = document.getElementById('avgPoisonAttrBar');
+const avgFoodPercBar = document.getElementById('avgFoodPercBar');
+
+const inspectorPanel = document.getElementById('inspectorPanel');
+const inspectorData = document.querySelector('.inspector-data');
+const insHint = document.querySelector('.hint');
+const insAge = document.getElementById('insAge');
+const insHealth = document.getElementById('insHealth');
+const insFoodAttr = document.getElementById('insFoodAttr');
+const insPoisonAttr = document.getElementById('insPoisonAttr');
+const insFoodVis = document.getElementById('insFoodVis');
+const insPoisonVis = document.getElementById('insPoisonVis');
 
 const width = canvas.width;
 const height = canvas.height;
@@ -24,30 +47,20 @@ let vehicles = [];
 let food = [];
 let poison = [];
 
-// Evolution configuration
-const MUTATION_RATE = 0.05;
+let selectedVehicle = null;
+
+// Config bounds
 const MAX_SPEED = 4;
 const MAX_FORCE = 0.2;
 const FOOD_NUTRITION = 0.3;
 const POISON_NUTRITION = -0.7;
-const REPRODUCTION_THRESHOLD = 2.5; // Health needed to reproduce
+const REPRODUCTION_THRESHOLD = 2.5;
 
-// Helper vector functions
-function magnitude(vx, vy) { return Math.sqrt(vx*vx + vy*vy); }
-function normalize(vx, vy) {
-    let m = magnitude(vx, vy);
-    if (m > 0) return {x: vx/m, y: vy/m};
-    return {x: vx, y: vy};
-}
-function distance(x1, y1, x2, y2) {
-    let dx = x1 - x2; let dy = y1 - y2;
-    return Math.sqrt(dx*dx + dy*dy);
-}
+// Helpers
 function limit(vx, vy, max) {
-    let m = magnitude(vx, vy);
+    let m = Math.sqrt(vx*vx + vy*vy);
     if (m > max) {
-        let n = normalize(vx, vy);
-        return {x: n.x * max, y: n.y * max};
+        return {x: (vx/m) * max, y: (vy/m) * max};
     }
     return {x: vx, y: vy};
 }
@@ -60,21 +73,21 @@ class Vehicle {
         this.vy = (Math.random() * 2 - 1) * MAX_SPEED;
         this.ax = 0;
         this.ay = 0;
-        this.r = 4; // base radius
+        this.r = 5;
         this.health = 1.0;
         this.age = 0;
 
-        // DNA contains 4 genes:
-        // 0: Food Attraction Weight (-2 to +2)
-        // 1: Poison Attraction Weight (-2 to +2)
-        // 2: Food Perception Radius (10 to 150)
-        // 3: Poison Perception Radius (10 to 150)
+        // DNA:
+        // 0: Food Attraction (-3 to 3)
+        // 1: Poison Attraction (-3 to 3)
+        // 2: Food Perception (10 to 150)
+        // 3: Poison Perception (10 to 150)
         if (dna) {
             this.dna = dna;
         } else {
             this.dna = [
-                (Math.random() * 4) - 2,
-                (Math.random() * 4) - 2,
+                (Math.random() * 6) - 3,
+                (Math.random() * 6) - 3,
                 (Math.random() * 140) + 10,
                 (Math.random() * 140) + 10
             ];
@@ -82,26 +95,21 @@ class Vehicle {
     }
 
     update() {
-        // Apply acceleration to velocity
         this.vx += this.ax;
         this.vy += this.ay;
         let limited = limit(this.vx, this.vy, MAX_SPEED);
         this.vx = limited.x;
         this.vy = limited.y;
 
-        // Update position
         this.x += this.vx;
         this.y += this.vy;
 
-        // Reset acceleration
         this.ax = 0;
         this.ay = 0;
 
-        // Boundaries
         this.x = (this.x + width) % width;
         this.y = (this.y + height) % height;
 
-        // Aging and health decay
         this.health -= 0.003;
         this.age++;
     }
@@ -115,23 +123,18 @@ class Vehicle {
         let desiredX = targetX - this.x;
         let desiredY = targetY - this.y;
 
-        // Shortest path handling for toroidal world
         if (desiredX > width/2) desiredX -= width;
         else if (desiredX < -width/2) desiredX += width;
         if (desiredY > height/2) desiredY -= height;
         else if (desiredY < -height/2) desiredY += height;
 
-        let m = magnitude(desiredX, desiredY);
+        let m = Math.sqrt(desiredX*desiredX + desiredY*desiredY);
         if (m === 0) return {x:0, y:0};
 
-        let norm = normalize(desiredX, desiredY);
-        desiredX = norm.x * MAX_SPEED;
-        desiredY = norm.y * MAX_SPEED;
+        desiredX = (desiredX/m) * MAX_SPEED;
+        desiredY = (desiredY/m) * MAX_SPEED;
 
-        let steerX = desiredX - this.vx;
-        let steerY = desiredY - this.vy;
-
-        let steerLim = limit(steerX, steerY, MAX_FORCE);
+        let steerLim = limit(desiredX - this.vx, desiredY - this.vy, MAX_FORCE);
         return {x: steerLim.x * weight, y: steerLim.y * weight};
     }
 
@@ -142,7 +145,6 @@ class Vehicle {
         for (let i = list.length - 1; i >= 0; i--) {
             let item = list[i];
 
-            // Calc distance considering toroidal world
             let dx = this.x - item.x;
             let dy = this.y - item.y;
             if (dx > width/2) dx -= width;
@@ -153,7 +155,6 @@ class Vehicle {
             let d = Math.sqrt(dx*dx + dy*dy);
 
             if (d < this.r + 2) {
-                // Eaten!
                 list.splice(i, 1);
                 this.health += nutrition;
             } else if (d < record && d < perceptionRadius) {
@@ -179,23 +180,19 @@ class Vehicle {
     reproduce() {
         if (Math.random() < 0.002 && this.health > REPRODUCTION_THRESHOLD) {
             let childDNA = [...this.dna];
+            let mutationRate = parseInt(mutRateSlider.value) / 100;
 
-            // Mutate
             for (let i = 0; i < childDNA.length; i++) {
-                if (Math.random() < MUTATION_RATE) {
-                    if (i < 2) childDNA[i] += (Math.random() * 0.4 - 0.2); // mutate weights
-                    else childDNA[i] += (Math.random() * 20 - 10);        // mutate radii
+                if (Math.random() < mutationRate) {
+                    if (i < 2) childDNA[i] += (Math.random() * 0.4 - 0.2);
+                    else childDNA[i] += (Math.random() * 20 - 10);
 
-                    // Clamp values
-                    if (i < 2) {
-                        childDNA[i] = Math.max(-2, Math.min(2, childDNA[i]));
-                    } else {
-                        childDNA[i] = Math.max(10, Math.min(150, childDNA[i]));
-                    }
+                    if (i < 2) childDNA[i] = Math.max(-3, Math.min(3, childDNA[i]));
+                    else childDNA[i] = Math.max(10, Math.min(150, childDNA[i]));
                 }
             }
 
-            this.health -= 1.0; // Childbirth costs energy
+            this.health -= 1.0;
             return new Vehicle(this.x, this.y, childDNA);
         }
         return null;
@@ -208,40 +205,49 @@ class Vehicle {
         ctx.translate(this.x, this.y);
         ctx.rotate(angle);
 
-        if (debugMode) {
-            // Draw perception radii
+        let isSelected = (this === selectedVehicle);
+
+        if (debugMode || isSelected) {
             ctx.beginPath();
             ctx.arc(0, 0, this.dna[2], 0, Math.PI * 2);
-            ctx.strokeStyle = 'rgba(34, 197, 94, 0.2)'; // Green for food
+            ctx.strokeStyle = 'rgba(34, 197, 94, 0.2)';
             ctx.stroke();
 
             ctx.beginPath();
             ctx.arc(0, 0, this.dna[3], 0, Math.PI * 2);
-            ctx.strokeStyle = 'rgba(239, 68, 68, 0.2)'; // Red for poison
+            ctx.strokeStyle = 'rgba(239, 68, 68, 0.2)';
             ctx.stroke();
 
-            // Draw force lines (length indicates weight)
             ctx.beginPath();
             ctx.moveTo(0, 0);
-            ctx.lineTo(this.dna[0] * 20, 0);
+            ctx.lineTo(this.dna[0] * 15, 0);
             ctx.strokeStyle = 'rgba(34, 197, 94, 0.8)';
+            ctx.lineWidth = 2;
             ctx.stroke();
 
             ctx.beginPath();
             ctx.moveTo(0, 0);
-            ctx.lineTo(this.dna[1] * 20, 0);
+            ctx.lineTo(this.dna[1] * 15, 0);
             ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)';
             ctx.stroke();
         }
 
-        // Draw body (Triangle pointing right)
-        // Color blends based on health
-        let colorMix = Math.max(0, Math.min(1, this.health));
-        let r = Math.floor(255 * (1 - colorMix) + 100 * colorMix);
-        let g = Math.floor(100 * (1 - colorMix) + 200 * colorMix);
-        ctx.fillStyle = `rgba(${r}, ${g}, 150, 0.8)`;
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 1;
+        // Color based on DNA
+        // Green if likes food, Red if likes poison
+        let rColor = Math.floor(Math.max(0, this.dna[1]) / 3 * 255);
+        let gColor = Math.floor(Math.max(0, this.dna[0]) / 3 * 255);
+        // Dim if low health
+        let alpha = Math.max(0.2, Math.min(1, this.health));
+
+        ctx.fillStyle = `rgba(${rColor + 50}, ${gColor + 50}, 50, ${alpha})`;
+
+        if (isSelected) {
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+        } else {
+            ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+            ctx.lineWidth = 1;
+        }
 
         ctx.beginPath();
         ctx.moveTo(this.r * 2, 0);
@@ -252,6 +258,16 @@ class Vehicle {
         ctx.stroke();
 
         ctx.restore();
+
+        // Draw selection ring
+        if (isSelected) {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.r * 3, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(255, 255, 0, 0.8)';
+            ctx.setLineDash([4, 2]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
     }
 
     dead() {
@@ -269,14 +285,61 @@ function init() {
     vehicles = [];
     food = [];
     poison = [];
+    selectedVehicle = null;
 
-    // Initial population
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 60; i++) {
         vehicles.push(new Vehicle(Math.random() * width, Math.random() * height));
     }
 
-    spawnItems(food, 100);
-    spawnItems(poison, 30);
+    spawnItems(food, 120);
+    spawnItems(poison, 40);
+    updateInspector();
+}
+
+function updateGlobalStats() {
+    if (vehicles.length === 0) return;
+
+    let avgFoodAttr = 0;
+    let avgPoisonAttr = 0;
+    let avgFoodPerc = 0;
+
+    for(let v of vehicles) {
+        avgFoodAttr += v.dna[0];
+        avgPoisonAttr += v.dna[1];
+        avgFoodPerc += v.dna[2];
+    }
+
+    avgFoodAttr /= vehicles.length;
+    avgPoisonAttr /= vehicles.length;
+    avgFoodPerc /= vehicles.length;
+
+    // Map -3 to 3 to 0% to 100%
+    let faPercent = ((avgFoodAttr + 3) / 6) * 100;
+    let paPercent = ((avgPoisonAttr + 3) / 6) * 100;
+    // Map 10 to 150 to 0% to 100%
+    let fpPercent = ((avgFoodPerc - 10) / 140) * 100;
+
+    avgFoodAttrBar.style.width = `${Math.max(0, Math.min(100, faPercent))}%`;
+    avgPoisonAttrBar.style.width = `${Math.max(0, Math.min(100, paPercent))}%`;
+    avgFoodPercBar.style.width = `${Math.max(0, Math.min(100, fpPercent))}%`;
+}
+
+function updateInspector() {
+    if (selectedVehicle && !selectedVehicle.dead()) {
+        insHint.style.display = 'none';
+        inspectorData.style.display = 'block';
+
+        insAge.textContent = selectedVehicle.age;
+        insHealth.textContent = selectedVehicle.health.toFixed(2);
+        insFoodAttr.textContent = selectedVehicle.dna[0].toFixed(2);
+        insPoisonAttr.textContent = selectedVehicle.dna[1].toFixed(2);
+        insFoodVis.textContent = selectedVehicle.dna[2].toFixed(0);
+        insPoisonVis.textContent = selectedVehicle.dna[3].toFixed(0);
+    } else {
+        selectedVehicle = null;
+        insHint.style.display = 'block';
+        inspectorData.style.display = 'none';
+    }
 }
 
 function loop(timestamp) {
@@ -286,36 +349,30 @@ function loop(timestamp) {
         return;
     }
 
-    // Clear background
     ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(0, 0, width, height);
 
-    // Random spawns
-    if (Math.random() < 0.1) food.push({ x: Math.random() * width, y: Math.random() * height });
-    if (Math.random() < 0.02) poison.push({ x: Math.random() * width, y: Math.random() * height });
+    // Spawning based on sliders
+    let fRate = parseInt(foodRateSlider.value) / 100;
+    let pRate = parseInt(poisonRateSlider.value) / 100;
 
-    // Draw Food
+    if (Math.random() < fRate) food.push({ x: Math.random() * width, y: Math.random() * height });
+    if (Math.random() < pRate) poison.push({ x: Math.random() * width, y: Math.random() * height });
+
     ctx.fillStyle = '#22c55e';
-    for (let i = 0; i < food.length; i++) {
-        ctx.beginPath();
-        ctx.arc(food[i].x, food[i].y, 2, 0, Math.PI * 2);
-        ctx.fill();
+    for (let f of food) {
+        ctx.beginPath(); ctx.arc(f.x, f.y, 2, 0, Math.PI * 2); ctx.fill();
     }
 
-    // Draw Poison
     ctx.fillStyle = '#ef4444';
-    for (let i = 0; i < poison.length; i++) {
-        ctx.beginPath();
-        ctx.arc(poison[i].x, poison[i].y, 2, 0, Math.PI * 2);
-        ctx.fill();
+    for (let p of poison) {
+        ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, Math.PI * 2); ctx.fill();
     }
 
     let highestAge = 0;
 
-    // Update Vehicles
     for (let i = vehicles.length - 1; i >= 0; i--) {
         let v = vehicles[i];
-
         v.behaviors(food, poison);
         v.update();
         v.draw(ctx);
@@ -323,27 +380,26 @@ function loop(timestamp) {
         if (v.age > highestAge) highestAge = v.age;
 
         let child = v.reproduce();
-        if (child != null) {
-            vehicles.push(child);
-        }
+        if (child != null) vehicles.push(child);
 
         if (v.dead()) {
-            // Drop a food when dying (circle of life)
-            food.push({x: v.x, y: v.y});
+            food.push({x: v.x, y: v.y}); // drops food on death
             vehicles.splice(i, 1);
         }
     }
 
-    // Automatically restock population if extinction happens
-    if (vehicles.length === 0) {
-        init();
-    }
+    if (vehicles.length === 0) init();
 
-    // Update UI
+    // UI Updates
     popCountEl.textContent = vehicles.length;
     foodCountEl.textContent = food.length;
     poisonCountEl.textContent = poison.length;
     maxAgeEl.textContent = highestAge;
+
+    if (frameCount % 10 === 0) {
+        updateGlobalStats();
+        updateInspector();
+    }
 
     // FPS
     frameCount++;
@@ -364,17 +420,45 @@ toggleBtn.addEventListener('click', () => {
 
 resetBtn.addEventListener('click', init);
 
-debugCheckbox.addEventListener('change', (e) => {
-    debugMode = e.target.checked;
+catastropheBtn.addEventListener('click', () => {
+    // Kill 50% randomly
+    vehicles = vehicles.filter(() => Math.random() > 0.5);
+    updateInspector();
 });
+
+debugCheckbox.addEventListener('change', (e) => { debugMode = e.target.checked; });
+
+mutRateSlider.addEventListener('input', (e) => mutRateVal.textContent = e.target.value + '%');
+foodRateSlider.addEventListener('input', (e) => foodRateVal.textContent = e.target.value + '%');
+poisonRateSlider.addEventListener('input', (e) => poisonRateVal.textContent = e.target.value + '%');
 
 canvas.addEventListener('click', (e) => {
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    // Spawn a burst of food on click
-    for (let i = 0; i < 5; i++) {
-        food.push({ x: x + (Math.random()*20-10), y: y + (Math.random()*20-10) });
+
+    // Check if clicked on a vehicle
+    let clickedVehicle = null;
+    let minDist = Infinity;
+
+    for(let v of vehicles) {
+        let dx = v.x - x;
+        let dy = v.y - y;
+        let d = Math.sqrt(dx*dx + dy*dy);
+        if(d < v.r * 3 && d < minDist) {
+            minDist = d;
+            clickedVehicle = v;
+        }
+    }
+
+    if (clickedVehicle) {
+        selectedVehicle = clickedVehicle;
+        updateInspector();
+    } else {
+        // Spawn food
+        for (let i = 0; i < 5; i++) {
+            food.push({ x: x + (Math.random()*20-10), y: y + (Math.random()*20-10) });
+        }
     }
 });
 

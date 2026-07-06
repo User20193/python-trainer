@@ -3,33 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ecosystem Evolution</title>
+    <title>Ecosystem Evolution Lab</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <h1>Evolution of Intelligence</h1>
-        <p class="description">Watch creatures evolve to find food (green) and avoid poison (red) using genetic algorithms.</p>
+    <div class="layout-container">
 
-        <div class="controls">
-            <button id="toggleBtn">Pause</button>
-            <button id="resetBtn">Extinction (Reset)</button>
-            <label><input type="checkbox" id="debugCheckbox"> Show Perception Radii</label>
+        <div class="main-panel">
+            <div class="header">
+                <h1>Evolution Lab</h1>
+                <div class="controls">
+                    <button id="toggleBtn">Pause</button>
+                    <button id="resetBtn">Extinction</button>
+                    <button id="catastropheBtn">🔥 Catastrophe</button>
+                    <label><input type="checkbox" id="debugCheckbox"> Debug View</label>
+                </div>
+            </div>
+
+            <div class="canvas-container">
+                <canvas id="simCanvas" width="800" height="600"></canvas>
+                <div id="fpsCounter">FPS: 0</div>
+            </div>
         </div>
 
-        <div class="stats">
-            <span>Population: <span id="popCount">0</span></span>
-            <span>Food: <span id="foodCount">0</span></span>
-            <span>Poison: <span id="poisonCount">0</span></span>
-            <span>Highest Age: <span id="maxAge">0</span></span>
+        <div class="dashboard">
+            <h2>Environment Controls</h2>
+            <div class="slider-group">
+                <label>Mutation Rate: <span id="mutRateVal">5%</span></label>
+                <input type="range" id="mutRateSlider" min="0" max="50" value="5">
+            </div>
+            <div class="slider-group">
+                <label>Food Spawn Rate: <span id="foodRateVal">10%</span></label>
+                <input type="range" id="foodRateSlider" min="0" max="100" value="10">
+            </div>
+            <div class="slider-group">
+                <label>Poison Spawn Rate: <span id="poisonRateVal">2%</span></label>
+                <input type="range" id="poisonRateSlider" min="0" max="100" value="2">
+            </div>
+
+            <h2>Population Stats</h2>
+            <div class="stats-grid">
+                <div>Population: <strong id="popCount">0</strong></div>
+                <div>Food: <strong id="foodCount">0</strong></div>
+                <div>Poison: <strong id="poisonCount">0</strong></div>
+                <div>Max Age: <strong id="maxAge">0</strong></div>
+            </div>
+
+            <h2>Genetics (Average)</h2>
+            <div class="dna-bars">
+                <div class="dna-bar-container">
+                    <label>Food Attraction</label>
+                    <div class="bar-bg"><div class="bar-fill green-bar" id="avgFoodAttrBar" style="width: 50%;"></div></div>
+                </div>
+                <div class="dna-bar-container">
+                    <label>Poison Attraction</label>
+                    <div class="bar-bg"><div class="bar-fill red-bar" id="avgPoisonAttrBar" style="width: 50%;"></div></div>
+                </div>
+                <div class="dna-bar-container">
+                    <label>Food Perception</label>
+                    <div class="bar-bg"><div class="bar-fill blue-bar" id="avgFoodPercBar" style="width: 50%;"></div></div>
+                </div>
+            </div>
+
+            <h2>Inspector</h2>
+            <div class="inspector" id="inspectorPanel">
+                <p class="hint">Click on a creature to inspect its DNA.</p>
+                <div class="inspector-data" style="display: none;">
+                    <p><strong>Age:</strong> <span id="insAge">0</span></p>
+                    <p><strong>Health:</strong> <span id="insHealth">0</span></p>
+                    <hr>
+                    <p><strong>Genes:</strong></p>
+                    <p>🍔 Attraction: <span id="insFoodAttr">0</span></p>
+                    <p>☠️ Attraction: <span id="insPoisonAttr">0</span></p>
+                    <p>🍔 Vision: <span id="insFoodVis">0</span></p>
+                    <p>☠️ Vision: <span id="insPoisonVis">0</span></p>
+                </div>
+            </div>
         </div>
 
-        <div class="canvas-container">
-            <canvas id="simCanvas" width="800" height="600"></canvas>
-            <div id="fpsCounter">FPS: 0</div>
-        </div>
-
-        <p class="instructions">You can click on the canvas to manually spawn food.</p>
     </div>
     <script src="script.js"></script>
 </body>
