@@ -1,3 +1,4 @@
+
 const canvas = document.getElementById('simCanvas');
 const ctx = canvas.getContext('2d');
 
@@ -18,6 +19,8 @@ const CAFE = 4; // Red
 const PARK = 5; // Green
 const HOSPITAL = 6; // Pink
 const SHOP = 7; // Cyan
+const WALL = 8; // Impassable wall
+const DOOR = 9; // Passable door
 
 window.cityMap = [];
 window.homes = [];
@@ -38,172 +41,227 @@ for (let y = 0; y < ROWS; y++) {
     window.cityMap.push(row);
 }
 
-// Draw main roads (cross pattern + outer ring)
+// Draw main roads
 for (let y = 4; y < ROWS - 4; y++) {
     window.cityMap[y][Math.floor(COLS/2)] = ROAD;
-    window.cityMap[y][Math.floor(COLS/2) - 1] = ROAD; // Wider roads
+    window.cityMap[y][Math.floor(COLS/2) - 1] = ROAD;
 }
 for (let x = 4; x < COLS - 4; x++) {
     window.cityMap[Math.floor(ROWS/2)][x] = ROAD;
     window.cityMap[Math.floor(ROWS/2) - 1][x] = ROAD;
 }
-for (let y = 8; y < ROWS - 8; y++) {
+for (let y = 10; y < ROWS - 10; y++) {
     window.cityMap[y][Math.floor(COLS/4)] = ROAD;
     window.cityMap[y][Math.floor(COLS*3/4)] = ROAD;
 }
-for (let x = 8; x < COLS - 8; x++) {
+for (let x = 10; x < COLS - 10; x++) {
     window.cityMap[Math.floor(ROWS/4)][x] = ROAD;
     window.cityMap[Math.floor(ROWS*3/4)][x] = ROAD;
 }
 
-
-// Function to add zones
-function addZone(x, y, w, h, type, array) {
+// Function to add zones with walls and doors
+function addBuilding(x, y, w, h, type, array) {
     for(let i = y; i < y + h; i++) {
         for(let j = x; j < x + w; j++) {
             if(i < ROWS && j < COLS) {
-                window.cityMap[i][j] = type;
+                if (i === y || i === y + h - 1 || j === x || j === x + w - 1) {
+                    window.cityMap[i][j] = WALL;
+                } else {
+                    window.cityMap[i][j] = type;
+                    array.push({x: j, y: i});
+                }
+            }
+        }
+    }
+    if (y + h - 1 < ROWS && x + Math.floor(w/2) < COLS) {
+        window.cityMap[y + h - 1][x + Math.floor(w/2)] = DOOR;
+        array.push({x: x + Math.floor(w/2), y: y + h - 1});
+    }
+}
+
+function addPark(x, y, w, h, array) {
+    for(let i = y; i < y + h; i++) {
+        for(let j = x; j < x + w; j++) {
+            if(i < ROWS && j < COLS) {
+                window.cityMap[i][j] = PARK;
                 array.push({x: j, y: i});
             }
         }
     }
 }
 
-// Add zones (spreading them out on the larger map)
-addZone(2, 2, 5, 5, HOME, window.homes);
-addZone(COLS - 7, 2, 5, 5, HOME, window.homes);
-addZone(2, ROWS - 7, 5, 5, HOME, window.homes);
-addZone(Math.floor(COLS/4) + 2, Math.floor(ROWS/4) + 2, 4, 4, HOME, window.homes);
+// Add Buildings
+addBuilding(3, 3, 6, 6, HOME, window.homes);
+addBuilding(COLS - 9, 3, 6, 6, HOME, window.homes);
+addBuilding(3, ROWS - 9, 6, 6, HOME, window.homes);
+addBuilding(Math.floor(COLS/4) + 2, Math.floor(ROWS/4) + 2, 5, 5, HOME, window.homes);
 
-addZone(COLS - 12, ROWS - 12, 8, 8, WORK, window.works);
-addZone(10, Math.floor(ROWS/2) + 2, 6, 6, WORK, window.works);
+addBuilding(COLS - 15, ROWS - 15, 10, 10, WORK, window.works);
+addBuilding(12, Math.floor(ROWS/2) + 2, 8, 8, WORK, window.works);
 
-addZone(Math.floor(COLS/2) + 2, 5, 6, 6, CAFE, window.cafes);
-addZone(Math.floor(COLS/4) + 2, Math.floor(ROWS*3/4) + 2, 7, 7, PARK, window.parks);
+addBuilding(Math.floor(COLS/2) + 3, 5, 8, 8, CAFE, window.cafes);
+addBuilding(5, Math.floor(ROWS/4) + 2, 7, 7, HOSPITAL, window.hospitals);
+addBuilding(Math.floor(COLS*3/4) + 2, Math.floor(ROWS/2) + 2, 8, 8, SHOP, window.shops);
 
-addZone(5, Math.floor(ROWS/4) + 2, 6, 6, HOSPITAL, window.hospitals);
-addZone(Math.floor(COLS*3/4) + 2, Math.floor(ROWS/2) + 2, 6, 6, SHOP, window.shops);
+addPark(Math.floor(COLS/4) + 3, Math.floor(ROWS*3/4) + 3, 9, 9, window.parks);
 
 
+
+
+let offscreenCanvas = document.createElement('canvas');
+let offCtx = offscreenCanvas.getContext('2d');
+let mapNeedsRedraw = true;
 
 window.drawMap = function() {
-    let hour = gameTime / 60;
-    let isNight = hour < 7 || hour > 19;
+    if (mapNeedsRedraw) {
+        offscreenCanvas.width = window.width;
+        offscreenCanvas.height = window.height;
+        let hour = gameTime / 60;
+        let isNight = hour < 7 || hour > 19;
 
-    for (let y = 0; y < ROWS; y++) {
-        for (let x = 0; x < COLS; x++) {
-            let tile = window.cityMap[y][x];
-            let px = x * window.TILE_SIZE;
-            let py = y * window.TILE_SIZE;
+        for (let y = 0; y < ROWS; y++) {
+            for (let x = 0; x < COLS; x++) {
+                let tile = window.cityMap[y][x];
+                let px = x * window.TILE_SIZE;
+                let py = y * window.TILE_SIZE;
 
-            // Base ground
-            if (tile === EMPTY) {
-                ctx.fillStyle = '#1e1e2e';
-                ctx.fillRect(px, py, window.TILE_SIZE, window.TILE_SIZE);
-                // Grass details randomly
-                if ((x*y) % 7 === 0) {
-                    ctx.fillStyle = '#262638';
-                    ctx.fillRect(px + 4, py + 4, 4, 4);
+                if (tile === EMPTY) {
+                    offCtx.fillStyle = '#1e1e2e';
+                    offCtx.fillRect(px, py, window.TILE_SIZE, window.TILE_SIZE);
+                    if ((x*y) % 7 === 0) {
+                        offCtx.fillStyle = '#262638';
+                        offCtx.fillRect(px + 4, py + 4, 4, 4);
+                    }
                 }
-            }
-            else if (tile === ROAD) {
-                ctx.fillStyle = '#313244';
-                ctx.fillRect(px, py, window.TILE_SIZE, window.TILE_SIZE);
-                // Road markings
-                ctx.fillStyle = '#45475a';
-                if (x % 2 === 0 && window.cityMap[y][x-1] === ROAD && window.cityMap[y][x+1] === ROAD) {
-                    ctx.fillRect(px + window.TILE_SIZE/4, py + window.TILE_SIZE/2 - 1, window.TILE_SIZE/2, 2);
+                else if (tile === ROAD) {
+                    offCtx.fillStyle = '#313244';
+                    offCtx.fillRect(px, py, window.TILE_SIZE, window.TILE_SIZE);
+                    offCtx.fillStyle = '#45475a';
+                    if (x % 2 === 0 && window.cityMap[y][x-1] === ROAD && window.cityMap[y][x+1] === ROAD) {
+                        offCtx.fillRect(px + window.TILE_SIZE/4, py + window.TILE_SIZE/2 - 1, window.TILE_SIZE/2, 2);
+                    }
+                    if (y % 2 === 0 && window.cityMap[y-1] && window.cityMap[y-1][x] === ROAD && window.cityMap[y+1] && window.cityMap[y+1][x] === ROAD) {
+                        offCtx.fillRect(px + window.TILE_SIZE/2 - 1, py + window.TILE_SIZE/4, 2, window.TILE_SIZE/2);
+                    }
                 }
-                if (y % 2 === 0 && window.cityMap[y-1] && window.cityMap[y-1][x] === ROAD && window.cityMap[y+1] && window.cityMap[y+1][x] === ROAD) {
-                    ctx.fillRect(px + window.TILE_SIZE/2 - 1, py + window.TILE_SIZE/4, 2, window.TILE_SIZE/2);
+                else if (tile === HOME) {
+                    offCtx.fillStyle = '#3b82f6';
+                    offCtx.fillRect(px, py, window.TILE_SIZE, window.TILE_SIZE);
+                    offCtx.fillStyle = 'rgba(0,0,0,0.2)';
+                    offCtx.fillRect(px, py + window.TILE_SIZE/2, window.TILE_SIZE, window.TILE_SIZE/2);
+                    if (isNight) {
+                        offCtx.fillStyle = '#fde047';
+                        offCtx.fillRect(px + 4, py + 4, 6, 6);
+                    }
                 }
-            }
-            else if (tile === HOME) {
-                ctx.fillStyle = '#3b82f6';
-                ctx.fillRect(px, py, window.TILE_SIZE, window.TILE_SIZE);
-                // Roof shadow
-                ctx.fillStyle = 'rgba(0,0,0,0.2)';
-                ctx.fillRect(px, py + window.TILE_SIZE/2, window.TILE_SIZE, window.TILE_SIZE/2);
-                // Window light
-                if (isNight) {
-                    ctx.fillStyle = '#fde047'; // yellow light
-                    ctx.fillRect(px + 4, py + 4, 6, 6);
+                else if (tile === WORK) {
+                    offCtx.fillStyle = '#8b5cf6';
+                    offCtx.fillRect(px, py, window.TILE_SIZE, window.TILE_SIZE);
+                    offCtx.fillStyle = 'rgba(255,255,255,0.1)';
+                    offCtx.fillRect(px + 2, py + 2, window.TILE_SIZE - 4, window.TILE_SIZE - 4);
                 }
-            }
-            else if (tile === WORK) {
-                ctx.fillStyle = '#8b5cf6';
-                ctx.fillRect(px, py, window.TILE_SIZE, window.TILE_SIZE);
-                ctx.fillStyle = 'rgba(255,255,255,0.1)';
-                ctx.fillRect(px + 2, py + 2, window.TILE_SIZE - 4, window.TILE_SIZE - 4);
-            }
-            else if (tile === CAFE) {
-                ctx.fillStyle = '#ef4444';
-                ctx.fillRect(px, py, window.TILE_SIZE, window.TILE_SIZE);
-                // Awning
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(px, py, window.TILE_SIZE, 4);
-                // Window light
-                if (isNight) {
-                    ctx.fillStyle = '#fde047';
-                    ctx.fillRect(px + 4, py + 8, window.TILE_SIZE - 8, 8);
+                else if (tile === CAFE) {
+                    offCtx.fillStyle = '#ef4444';
+                    offCtx.fillRect(px, py, window.TILE_SIZE, window.TILE_SIZE);
+                    offCtx.fillStyle = '#ffffff';
+                    offCtx.fillRect(px, py, window.TILE_SIZE, 4);
+                    if (isNight) {
+                        offCtx.fillStyle = '#fde047';
+                        offCtx.fillRect(px + 4, py + 8, window.TILE_SIZE - 8, 8);
+                    }
                 }
-            }
+                else if (tile === PARK) {
+                    offCtx.fillStyle = '#22c55e';
+                    offCtx.fillRect(px, py, window.TILE_SIZE, window.TILE_SIZE);
+                    if ((x+y) % 2 === 0) {
+                        offCtx.fillStyle = '#16a34a';
+                        offCtx.beginPath();
+                        offCtx.arc(px + window.TILE_SIZE/2, py + window.TILE_SIZE/2, window.TILE_SIZE/3, 0, Math.PI*2);
+                        offCtx.fill();
+                        offCtx.fillStyle = 'rgba(0,0,0,0.2)';
+                        offCtx.beginPath();
+                        offCtx.arc(px + window.TILE_SIZE/2 + 2, py + window.TILE_SIZE/2 + 2, window.TILE_SIZE/3, 0, Math.PI*2);
+                        offCtx.fill();
+                    }
+                }
+                else if (tile === HOSPITAL) {
+                    offCtx.fillStyle = '#f43f5e';
+                    offCtx.fillRect(px, py, window.TILE_SIZE, window.TILE_SIZE);
+                    offCtx.fillStyle = '#ffffff';
+                    offCtx.fillRect(px + window.TILE_SIZE/2 - 2, py + 4, 4, window.TILE_SIZE - 8);
+                    offCtx.fillRect(px + 4, py + window.TILE_SIZE/2 - 2, window.TILE_SIZE - 8, 4);
+                }
+                else if (tile === SHOP) {
+                    offCtx.fillStyle = '#0ea5e9';
+                    offCtx.fillRect(px, py, window.TILE_SIZE, window.TILE_SIZE);
+                }
+                else if (tile === WALL) {
+                    offCtx.fillStyle = '#475569';
+                    offCtx.fillRect(px, py, window.TILE_SIZE, window.TILE_SIZE);
+                    offCtx.fillStyle = '#64748b';
+                    offCtx.fillRect(px, py, window.TILE_SIZE, 4);
+                    if (window.cityMap[y+1] && window.cityMap[y+1][x] !== WALL) {
+                        offCtx.fillStyle = 'rgba(0,0,0,0.4)';
+                        offCtx.fillRect(px, py + window.TILE_SIZE, window.TILE_SIZE, 4);
+                    }
+                }
+                else if (tile === DOOR) {
+                    offCtx.fillStyle = '#8b5cf6';
+                    offCtx.fillRect(px, py, window.TILE_SIZE, window.TILE_SIZE);
+                    offCtx.fillStyle = '#1e1e2e';
+                    offCtx.fillRect(px + 4, py + 4, window.TILE_SIZE - 8, window.TILE_SIZE - 8);
+                }
 
-            else if (tile === PARK) {
-                ctx.fillStyle = '#22c55e';
-                ctx.fillRect(px, py, window.TILE_SIZE, window.TILE_SIZE);
-                // Tree
-                if ((x+y) % 2 === 0) {
-                    ctx.fillStyle = '#16a34a';
-                    ctx.beginPath();
-                    ctx.arc(px + window.TILE_SIZE/2, py + window.TILE_SIZE/2, window.TILE_SIZE/3, 0, Math.PI*2);
-                    ctx.fill();
-                    // Tree shadow
-                    ctx.fillStyle = 'rgba(0,0,0,0.2)';
-                    ctx.beginPath();
-                    ctx.arc(px + window.TILE_SIZE/2 + 2, py + window.TILE_SIZE/2 + 2, window.TILE_SIZE/3, 0, Math.PI*2);
-                    ctx.fill();
-                }
+                offCtx.strokeStyle = 'rgba(255,255,255,0.02)';
+                offCtx.strokeRect(px, py, window.TILE_SIZE, window.TILE_SIZE);
             }
-            else if (tile === HOSPITAL) {
-                ctx.fillStyle = '#f43f5e'; // Pink-red
-                ctx.fillRect(px, py, window.TILE_SIZE, window.TILE_SIZE);
-                // Cross
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(px + window.TILE_SIZE/2 - 2, py + 4, 4, window.TILE_SIZE - 8);
-                ctx.fillRect(px + 4, py + window.TILE_SIZE/2 - 2, window.TILE_SIZE - 8, 4);
-            }
-            else if (tile === SHOP) {
-                ctx.fillStyle = '#0ea5e9'; // Cyan
-                ctx.fillRect(px, py, window.TILE_SIZE, window.TILE_SIZE);
-                ctx.fillStyle = 'rgba(255,255,255,0.2)';
-                // Stripes
-                if (x % 2 === 0) ctx.fillRect(px, py, window.TILE_SIZE, window.TILE_SIZE);
-            }
-
-
-            // Grid lines
-            ctx.strokeStyle = 'rgba(255,255,255,0.02)';
-            ctx.strokeRect(px, py, window.TILE_SIZE, window.TILE_SIZE);
         }
+        mapNeedsRedraw = false;
     }
+    ctx.drawImage(offscreenCanvas, 0, 0);
 };
 
+
 window.findPath = function(startX, startY, endX, endY) {
+    let queue = [{x: startX, y: startY, path: []}];
+    let visited = new Set();
+    visited.add(startX + "," + startY);
+
+    while (queue.length > 0) {
+        let curr = queue.shift();
+        if (curr.x === endX && curr.y === endY) return curr.path;
+
+        let dirs = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+        dirs.sort(() => Math.random() - 0.5);
+
+        for (let d of dirs) {
+            let nx = curr.x + d[0];
+            let ny = curr.y + d[1];
+
+            if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS) {
+                if (!visited.has(nx + "," + ny)) {
+                    if (window.cityMap[ny][nx] !== WALL) {
+                        visited.add(nx + "," + ny);
+                        queue.push({x: nx, y: ny, path: [...curr.path, {x: nx, y: ny}]});
+                    }
+                }
+            }
+        }
+    }
+
     let path = [];
     let currX = startX;
     let currY = startY;
-
     while (currX !== endX || currY !== endY) {
         if (currX < endX) currX++;
         else if (currX > endX) currX--;
         else if (currY < endY) currY++;
         else if (currY > endY) currY--;
-
         path.push({x: currX, y: currY});
     }
     return path;
 };
+
 
 const toggleBtn = document.getElementById('toggleBtn');
 const speedBtn = document.getElementById('speedBtn');
@@ -247,60 +305,34 @@ let lastFrameTime = 0;
 
 
 
-// Procedural Absurd Dialogue Engine
+// Procedural Semantic Dialogue Engine
 const DICTIONARY = {
-    words: [
-        "кот", "борщ", "сингулярность", "тапочки", "космос", "пицца", "квант", "забор", "луна", "кирпич",
-        "пельмени", "робот", "носок", "дождь", "кактус", "шляпа", "трактор", "философия", "сыр", "колбаса",
-        "огурец", "карандаш", "матрица", "пылесос", "динозавр", "банан", "бульдозер", "макароны", "утка", "чайник",
-        "капибара", "майонез", "телевизор", "диван", "смысл", "безумие", "табуретка", "вилка", "кефир", "шаурма",
-        "прыгать", "спать", "летать", "жевать", "кричать", "бежать", "думать", "плакать", "чихать", "смеяться",
-        "красть", "строить", "ломать", "любить", "ждать", "искать", "падать", "кидать", "копать", "танцевать",
-        "мерцать", "булькать", "жужжать", "храпеть", "варить", "жарить", "шептать", "выть", "сиять", "глючить",
-        "зеленый", "мокрый", "странный", "квадратный", "вкусный", "холодный", "лысый", "пушистый", "глупый", "великий",
-        "быстрый", "мягкий", "острый", "ржавый", "соленый", "громкий", "тайный", "святой", "эпичный", "жидкий",
-        "колючий", "сладкий", "кривой", "железный", "деревянный", "золотой", "скользкий", "мутный", "липкий", "бодрый",
-        "внезапно", "вчера", "громко", "быстро", "печально", "весело", "тайно", "медленно", "вкусно", "странно",
-        "зачем-то", "никогда", "всегда", "уныло", "бодро", "криво", "яростно", "нежно", "тихо", "эпично",
-        "однако", "потому", "если", "хотя", "чтобы", "затем", "потом", "или", "и", "но",
-        "ай", "ой", "ого", "ух", "ага", "увы", "вау", "хм", "э", "брр",
-        "космонавт", "кастрюля", "бетон", "улитка", "голубь", "собака", "картошка", "трава", "солнце", "ветер",
-        "самолет", "колесо", "гвоздь", "молоток", "топор", "утюг", "окно", "дверь", "стена", "пол",
-        "потолок", "крыша", "труба", "коробка", "бумага", "книга", "буква", "цифра", "ноль", "единица",
-        "корова", "свинья", "лошадь", "мышь", "слон", "жираф", "бегемот", "крокодил", "змея", "паук",
-        "муха", "комар", "пчела", "оса", "шмель", "жук", "бабочка", "мотылек", "гусеница", "червяк",
-        "дерево", "куст", "цветок", "лист", "корень", "ветка", "ствол", "кора", "мох", "гриб",
-        "яблоко", "груша", "слива", "вишня", "черешня", "клубника", "малина", "смородина", "крыжовник", "арбуз",
-        "дыня", "тыква", "кабачок", "баклажан", "помидор", "морковь", "свекла", "лук", "чеснок", "перец",
-        "соль", "сахар", "мука", "масло", "хлеб", "булка", "печенье", "конфета", "шоколад", "мороженое",
-        "пить", "есть", "кусать", "лизать", "глотать", "плевать", "нюхать", "дышать", "кашлять", "зевать",
-        "моргать", "смотреть", "видеть", "слушать", "слышать", "трогать", "гладить", "чесать", "щипать", "бить",
-
-        // Expansion words
-        "магазин", "больница", "таблетка", "врач", "покупки", "касса", "деньги", "карта", "шприц", "градусник",
-        "лекарство", "сироп", "здоровье", "хлеб", "молоко", "яйца", "рыба", "мясо", "сыр", "колбаса",
-        "купить", "продать", "лечить", "болеть", "выздоравливать", "платить", "брать", "отдавать", "считать",
-        "дорого", "дешево", "больно", "здорово", "полезно", "вредно", "сладко", "горько", "кисло",
-        "аптека", "продукт", "товар", "пакет", "скидка", "акция", "чек", "сдача", "очередь", "кассир",
-        "пациент", "диагноз", "рецепт", "витамин", "бинт", "пластырь", "укол", "операция", "медсестра"
-
-    ]
+    work: {
+        subjects: ["Начальник", "Клиент", "Проект", "Отчет", "График", "Офис", "Коллега", "Компьютер"],
+        verbs: ["сломал", "закрыл", "проверил", "уничтожил", "потерял", "нашел", "забыл"],
+        objects: ["зарплату", "документы", "смысл", "время", "файлы", "задачу", "кассу"]
+    },
+    food: {
+        subjects: ["Повар", "Официант", "Рецепт", "Борщ", "Майонез", "Сыр", "Пицца"],
+        verbs: ["пересолил", "сварил", "съел", "выплюнул", "пожарил", "купил", "украл"],
+        objects: ["кастрюлю", "макароны", "котлету", "вкус", "аппетит", "рыбу", "хлеб"]
+    },
+    general: {
+        subjects: ["Кот", "Сосед", "Мэр", "Телевизор", "Космонавт", "Динозавр", "Трактор", "Смысл жизни"],
+        verbs: ["прыгает на", "смотрит на", "жует", "ищет", "разрушает", "любит", "ненавидит"],
+        objects: ["забор", "диван", "тапочки", "космос", "квант", "гвоздь", "безумие"]
+    }
 };
 
-function generateDialogue() {
-    let pick = () => DICTIONARY.words[Math.floor(Math.random() * DICTIONARY.words.length)];
-    let length = Math.floor(Math.random() * 4) + 2; // 2 to 5 words
-    let sentence = [];
-    for(let i = 0; i < length; i++) {
-        sentence.push(pick());
-    }
-    // Capitalize first word and add punctuation
-    let text = sentence.join(" ");
+function generateDialogue(theme = "general") {
+    let dict = DICTIONARY[theme] || DICTIONARY.general;
+    let pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+    let subject = pick(dict.subjects);
+    let verb = pick(dict.verbs);
+    let obj = pick(dict.objects);
     let punctuation = Math.random() > 0.7 ? "!" : (Math.random() > 0.5 ? "?" : ".");
-    return text.charAt(0).toUpperCase() + text.slice(1) + punctuation;
+    return `${subject} ${verb} ${obj}${punctuation}`;
 }
-
-
 
 const NAMES_FIRST = ["Иван", "Александр", "Дмитрий", "Сергей", "Андрей", "Алексей", "Максим", "Евгений", "Михаил", "Владимир", "Анна", "Мария", "Елена", "Дарья", "Ольга", "Екатерина", "Наталья", "Татьяна", "Юлия", "Анастасия"];
 const NAMES_LAST = ["Иванов", "Смирнов", "Кузнецов", "Попов", "Васильев", "Петров", "Соколов", "Михайлов", "Новиков", "Федоров", "Морозов", "Волков", "Алексеев", "Лебедев", "Семенов", "Егоров", "Павлов", "Козлов", "Степанов", "Николаев"];
@@ -310,42 +342,36 @@ const NAMES_PATRO_F = ["Ивановна", "Александровна", "Дми
 function generateFIO() {
     let first = NAMES_FIRST[Math.floor(Math.random() * NAMES_FIRST.length)];
     let last = NAMES_LAST[Math.floor(Math.random() * NAMES_LAST.length)];
-
-    // Simple gender check based on first name ending (not perfect but ok for mock data)
     let isFemale = first.endsWith('а') || first.endsWith('я');
-
     if (isFemale && !last.endsWith('а') && !last.endsWith('в')) {
-         // handle genderizing last name naively
          if(last.endsWith('ов') || last.endsWith('ев') || last.endsWith('ин')) {
              last += 'а';
          }
     } else if (isFemale && (last.endsWith('ов') || last.endsWith('ев'))) {
          last += 'а';
     }
-
-    let patro = isFemale ?
-                NAMES_PATRO_F[Math.floor(Math.random() * NAMES_PATRO_F.length)] :
-                NAMES_PATRO[Math.floor(Math.random() * NAMES_PATRO.length)];
-
+    let patro = isFemale ? NAMES_PATRO_F[Math.floor(Math.random() * NAMES_PATRO_F.length)] : NAMES_PATRO[Math.floor(Math.random() * NAMES_PATRO.length)];
     return `${last} ${first} ${patro}`;
 }
 
 
 class Person {
-
     constructor(id) {
         this.id = id;
+        let home = window.homes[Math.floor(Math.random() * window.homes.length)];
+        this.x = home.x;
+        this.y = home.y;
+        this.home = home;
+
         this.fio = generateFIO();
-        this.name = this.fio.split(" ")[1] || this.fio; // Short name for logs
+        this.name = this.fio.split(" ")[1] || this.fio;
+        this.age = Math.floor(Math.random() * 50) + 18;
 
-        this.age = Math.floor(Math.random() * 50) + 18; // 18 to 67 years old
-
-
-        // Generate a 4x4 unique pixel art avatar
         this.pixels = [];
         let baseColor = `hsl(${Math.random() * 360}, 70%, 60%)`;
+        let accentColor = `hsl(${Math.random() * 360}, 80%, 40%)`;
+        let skinColor = Math.random() > 0.5 ? '#fcd34d' : '#f87171';
 
-        // Assign Profession
         this.profession = "Безработный";
         this.workplace = null;
         if (id % 3 === 0) {
@@ -354,37 +380,26 @@ class Person {
         } else if (id % 3 === 1) {
             this.profession = "Врач";
             this.workplace = window.hospitals[Math.floor(Math.random() * window.hospitals.length)];
-            baseColor = '#ffffff'; // Doctors wear white
+            baseColor = '#ffffff';
         } else {
             this.profession = "Продавец";
             this.workplace = window.shops[Math.floor(Math.random() * window.shops.length)];
-            baseColor = '#0ea5e9'; // Shop uniform
+            baseColor = '#0ea5e9';
         }
-
-        let accentColor = `hsl(${Math.random() * 360}, 80%, 40%)`;
-        let skinColor = Math.random() > 0.5 ? '#fcd34d' : '#f87171'; // basic skin tones
 
         for (let i = 0; i < 4; i++) {
             let row = [];
             for (let j = 0; j < 4; j++) {
-                if (i === 0 && (j === 1 || j === 2)) row.push(skinColor); // head
-                else if (i === 1) row.push(baseColor); // shoulders/chest
-                else if (i === 2 && (j === 1 || j === 2)) row.push(baseColor); // body
-                else if (i === 2 && (j === 0 || j === 3)) row.push(skinColor); // hands
-                else if (i === 3 && (j === 1 || j === 2)) row.push(accentColor); // legs
+                if (i === 0 && (j === 1 || j === 2)) row.push(skinColor);
+                else if (i === 1) row.push(baseColor);
+                else if (i === 2 && (j === 1 || j === 2)) row.push(baseColor);
+                else if (i === 2 && (j === 0 || j === 3)) row.push(skinColor);
+                else if (i === 3 && (j === 1 || j === 2)) row.push(accentColor);
                 else row.push('transparent');
             }
             this.pixels.push(row);
         }
 
-
-
-        // Assign a random home
-        let home = window.homes[Math.floor(Math.random() * window.homes.length)];
-        this.x = home.x;
-        this.y = home.y;
-
-        this.home = home;
 
         // Visual Coordinates for Lerp
         this.visualX = this.x;
@@ -424,7 +439,7 @@ class Person {
             social: 0.08 + Math.random() * 0.08
         };
 
-        this.log("Проснулся в МиниГраде.");
+        this.log("Проснулся в Лисеу-Сити.");
     }
 
 
@@ -463,7 +478,7 @@ class Person {
             this.currentAction = "Разговор";
             // Occasionally say something new while chatting
             if (Math.random() < 0.1) {
-                this.say(generateDialogue());
+                this.say(generateDialogue(this.chatTheme || "general"));
             }
             // Ensure target is also staying
             if (this.chatTarget && this.chatTarget.chatTimer <= 0) {
@@ -534,23 +549,21 @@ class Person {
 
 
     checkDynamicEncounters() {
-        if (this.chatTimer > 0) return; // Don't interrupt existing chat
+        if (this.chatTimer > 0) return;
 
-        // Find people on same or adjacent tiles to increase interaction frequency
         let othersHere = people.filter(p => p !== this && Math.abs(p.x - this.x) <= 1 && Math.abs(p.y - this.y) <= 1);
         for (let other of othersHere) {
             if (other.chatTimer > 0) continue;
 
             let rel = this.relationships[other.id] || 0;
 
-            // Friends stopping to chat (higher chance now)
             if (rel > 10 && Math.random() < 0.4) {
                 this.log(`Случайно встретил друга ${other.name}!`);
-                this.startChat(other, 80);
+                let theme = (this.profession === other.profession && this.profession !== "Безработный") ? "work" : "general";
+                this.startChat(other, 80, theme);
                 return;
             }
 
-            // Enemies fighting on sight!
             if (rel < -10 && Math.random() < 0.5) {
                 this.log(`Увидел врага ${other.name} и завязалась драка!`);
                 this.energy -= 10;
@@ -558,8 +571,8 @@ class Person {
                 this.addStatus("Злой", 100);
                 other.addStatus("Злой", 100);
 
-                this.say(generateDialogue());
-                other.say(generateDialogue());
+                this.say("Я тебя ненавижу!");
+                other.say("Сам такой!");
 
                 this.currentAction = "Бегство";
                 this.target = this.home;
@@ -571,11 +584,10 @@ class Person {
                 return;
             }
 
-            // Desperate stealing
             if (this.hunger < 30 && this.money < 10 && other.money > 20 && Math.random() < 0.2) {
                 this.log(`Украл деньги у ${other.name} от отчаяния!`);
-                this.say(generateDialogue());
-                other.say(generateDialogue());
+                this.say(generateDialogue("food"));
+                other.say("Эй! Отдай!");
                 this.money += 15;
                 other.money -= 15;
                 this.relationships[other.id] = rel - 50;
@@ -584,10 +596,9 @@ class Person {
                 return;
             }
 
-            // Random neutral chat with strangers
-            if (Math.random() < 0.05) {
+            if (this.energy > 50 && other.energy > 50 && Math.random() < 0.05) {
                 this.log(`Остановился поболтать с ${other.name}.`);
-                this.startChat(other, 50);
+                this.startChat(other, 50, "general");
                 this.relationships[other.id] = rel + 5;
                 other.relationships[this.id] = (other.relationships[this.id] || 0) + 5;
                 return;
@@ -595,7 +606,7 @@ class Person {
         }
     }
 
-    startChat(other, duration) {
+    startChat(other, duration, theme = "general") {
         this.chatTimer = duration;
         this.chatTarget = other;
         other.chatTimer = duration;
@@ -604,10 +615,13 @@ class Person {
         this.currentAction = "Разговор";
         other.currentAction = "Разговор";
 
-        this.say(generateDialogue());
+        this.chatTheme = theme;
+        other.chatTheme = theme;
+
+        this.say(generateDialogue(theme));
         setTimeout(() => {
-           if (other.chatTimer > 0) other.say(generateDialogue());
-        }, 1500); // Small visual delay
+           if (other.chatTimer > 0) other.say(generateDialogue(theme));
+        }, 1500);
     }
 
 
@@ -636,8 +650,7 @@ class Person {
             targetLocation = window.cafes[Math.floor(Math.random() * window.cafes.length)];
         }
 
-
-        // 3. WORK (Priority during work hours if needs are somewhat met)
+        // 3. WORK
         let workUtility = 0;
         if (hour >= 9 && hour <= 17 && this.energy > 30 && this.hunger > 30 && this.profession !== "Безработный") {
             workUtility = 80;
@@ -648,6 +661,33 @@ class Person {
             targetLocation = this.workplace;
         }
 
+        // 5. HOSPITAL (High priority if sick)
+        let hospitalUtility = 0;
+        if (this.statusEffects.find(s => s.name === "Болен")) {
+            hospitalUtility = 90;
+        }
+        if (hospitalUtility > highestUtility) {
+            highestUtility = hospitalUtility;
+            action = "Лечится";
+            targetLocation = window.hospitals[Math.floor(Math.random() * window.hospitals.length)];
+        }
+
+        // 6. SHOP (Medium priority if money is ok and hunger is ok)
+        let shopUtility = 0;
+        if (this.money > 20 && this.hunger > 60 && Math.random() < 0.05) {
+            shopUtility = 60; // Random desire to shop
+        }
+        if (shopUtility > highestUtility) {
+            highestUtility = shopUtility;
+            action = "Шопинг";
+            targetLocation = window.shops[Math.floor(Math.random() * window.shops.length)];
+        }
+
+        if (workUtility > highestUtility) {
+            highestUtility = workUtility;
+            action = "Работа";
+            targetLocation = window.works[Math.floor(Math.random() * window.works.length)];
+        }
 
         // 4. SOCIALIZE (If lonely and free time)
         let socialUtility = (100 - this.social) * 1.2;
@@ -679,30 +719,6 @@ class Person {
         }
 
 
-
-        // 5. HOSPITAL (High priority if sick)
-        let hospitalUtility = 0;
-        if (this.statusEffects.find(s => s.name === "Болен")) {
-            hospitalUtility = 90;
-        }
-        if (hospitalUtility > highestUtility) {
-            highestUtility = hospitalUtility;
-            action = "Лечится";
-            targetLocation = window.hospitals[Math.floor(Math.random() * window.hospitals.length)];
-        }
-
-        // 6. SHOP (Medium priority if money is ok and hunger is ok)
-        let shopUtility = 0;
-        if (this.money > 20 && this.hunger > 60 && Math.random() < 0.05) {
-            shopUtility = 60; // Random desire to shop
-        }
-        if (shopUtility > highestUtility) {
-            highestUtility = shopUtility;
-            action = "Шопинг";
-            targetLocation = window.shops[Math.floor(Math.random() * window.shops.length)];
-        }
-
-
         // Execution of Action
         if (this.currentAction !== action) {
             this.currentAction = action;
@@ -731,7 +747,6 @@ class Person {
                     this.addStatus("Болен", 120); // Sick for 2 hours
                 }
             }
-
             if (action.startsWith("Работа")) {
                 this.money += 2;
                 this.energy -= 0.1;
@@ -740,9 +755,6 @@ class Person {
                     this.money -= 1; // Angry workers perform poorly
                 }
             }
-
-
-
             if (action === "Лечится") {
                 if (this.money >= 5) {
                     this.money -= 5;
@@ -761,7 +773,6 @@ class Person {
                 }
             }
 
-
             // Emergent Interactions Engine
             let othersHere = people.filter(p => p !== this && p.x === this.x && p.y === this.y && p.currentAction === this.currentAction);
 
@@ -777,7 +788,7 @@ class Person {
                     if (this.hunger < 30 && other.hunger < 30 && other.money > 20 && this.money < 10 && action !== "Работа") {
                         if (Math.random() < 0.1) {
                             this.log(`Выпросил еду у ${other.name}.`);
-                            this.say(generateDialogue());
+                            this.say(generateDialogue("general"));
                             other.say("Ладно, держи...");
                             this.hunger += 30;
                             other.money -= 10;
@@ -790,7 +801,7 @@ class Person {
                     if (this.statusEffects.find(s => s.name === "Злой")) {
                         if (Math.random() < 0.2) {
                             this.log(`Наорал на ${other.name}!`);
-                            this.say(generateDialogue());
+                            this.say(generateDialogue("general"));
                             other.addStatus("Злой", 120); // Spread anger
                             this.relationships[other.id] = rel - 15;
                             this.statusEffects = this.statusEffects.filter(s => s.name !== "Злой"); // Relieved anger
@@ -801,16 +812,16 @@ class Person {
                     else if (Math.random() < 0.1) {
                         if (rel > 10) {
                             this.log(`Отлично поболтал с другом ${other.name}.`);
-                            this.say(generateDialogue());
+                            this.say(generateDialogue("general"));
                             this.social += 15;
                             this.energy += 2; // Good chats energize
                         } else if (other.statusEffects.find(s => s.name === "Болен")) {
                              this.log(`Говорил с ${other.name}, и он чихнул на меня.`);
-                             other.say(generateDialogue());
+                             other.say(generateDialogue("general"));
                              if (Math.random() < 0.5) this.addStatus("Болен", 180);
                         } else {
                             this.log(`Поболтал с ${other.name}.`);
-                            this.say(generateDialogue());
+                            this.say(generateDialogue("general"));
                             this.social += 10;
                             this.relationships[other.id] = rel + 2;
                         }
@@ -819,8 +830,8 @@ class Person {
                     // Random argument
                     if (Math.random() < 0.005) {
                         this.log(`Подрался с ${other.name}!`);
-                        this.say(generateDialogue());
-                        other.say(generateDialogue());
+                        this.say(generateDialogue("general"));
+                        other.say(generateDialogue("general"));
                         this.addStatus("Злой", 120);
                         other.addStatus("Злой", 120);
                         this.relationships[other.id] = rel - 20;
@@ -839,7 +850,6 @@ class Person {
         let vx = this.visualX * window.TILE_SIZE;
         let vy = this.visualY * window.TILE_SIZE;
 
-        // Shadow
         ctx.fillStyle = 'rgba(0,0,0,0.3)';
         ctx.beginPath();
         ctx.arc(vx + window.TILE_SIZE / 2,
@@ -847,7 +857,6 @@ class Person {
                 window.TILE_SIZE / 3, 0, Math.PI * 2);
         ctx.fill();
 
-        // Draw 4x4 Pixel Art
         let pSize = window.TILE_SIZE / 4;
         for (let i = 0; i < 4; i++) {
             for (let j = 0; j < 4; j++) {
@@ -855,7 +864,6 @@ class Person {
                     ctx.fillStyle = this.pixels[i][j];
                     ctx.fillRect(vx + j * pSize, vy + i * pSize, pSize, pSize);
 
-                    // Highlight selected outline
                     if (selectedPerson === this) {
                         ctx.strokeStyle = '#fff';
                         ctx.lineWidth = 1;
@@ -872,13 +880,12 @@ class Person {
         if (this.currentAction === "Сон") emoji = "💤";
         if (this.currentAction === "Ест в кафе") emoji = "🍔";
         if (this.currentAction.startsWith("Работа")) emoji = "💼";
-        if (this.currentAction === "Отдых в парке") emoji = "💬";
-
-        if (this.currentAction === "В гостях") emoji = "🏠";
         if (this.currentAction === "Лечится") emoji = "🏥";
         if (this.currentAction === "Шопинг") emoji = "🛍️";
+        if (this.currentAction === "Разговор") emoji = "🗣️";
+        if (this.currentAction === "Отдых в парке") emoji = "💬";
+        if (this.currentAction === "В гостях") emoji = "🏠";
         if (this.currentAction === "Бегство") emoji = "🏃";
-
         if (this.currentAction === "Разговор") emoji = "🗣️";
 
         if (this.statusEffects.find(s => s.name === "Злой")) emoji = "🤬"; // override with status emotion
@@ -939,8 +946,6 @@ function formatTime(minutes) {
 
 
 function updateInspector() {
-
-
     if (selectedPerson) {
         insHint.style.display = 'none';
         insData.style.display = 'block';
@@ -951,6 +956,7 @@ function updateInspector() {
         if(ageEl) ageEl.textContent = `Возраст: ${selectedPerson.age} лет`;
 
 
+        insName.textContent = selectedPerson.name;
 
         let statuses = selectedPerson.statusEffects.map(s => s.name).join(", ");
         let statStr = statuses ? ` [${statuses}]` : "";
@@ -993,6 +999,7 @@ function gameLoop(timestamp) {
             }
 
             updateWeather();
+            if (gameTime % 60 === 0 && (gameTime === 7*60 || gameTime === 20*60)) mapNeedsRedraw = true;
 
             dayCountEl.textContent = dayCount;
             clockTimeEl.textContent = formatTime(gameTime) + ` (${window.weather})`;

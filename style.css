@@ -17,7 +17,7 @@ body {
     padding: 20px;
     border-radius: 12px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
-    max-width: 1200px;
+    max-width: 1600px;
 }
 
 .main-panel {
@@ -123,6 +123,10 @@ canvas {
     padding: 15px;
     border-radius: 8px;
     border: 1px solid #2f362f;
+    resize: horizontal;
+    overflow: hidden;
+    min-width: 250px;
+    max-width: 600px;
 }
 
 .inspector {
@@ -130,6 +134,9 @@ canvas {
     padding: 15px;
     border-radius: 6px;
     min-height: 300px;
+    resize: vertical;
+    overflow-y: auto;
+    max-height: 600px;
 }
 
 .inspector-hint {
