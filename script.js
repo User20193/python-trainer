@@ -19,6 +19,7 @@ const CAFE = 4; // Red
 const PARK = 5; // Green
 const HOSPITAL = 6; // Pink
 const SHOP = 7; // Cyan
+const CITY_HALL = 10; // Gold
 const WALL = 8; // Impassable wall
 const DOOR = 9; // Passable door
 
@@ -29,6 +30,7 @@ window.cafes = [];
 window.parks = [];
 window.hospitals = [];
 window.shops = [];
+window.cityHalls = [];
 
 
 
@@ -97,7 +99,12 @@ addBuilding(3, ROWS - 9, 6, 6, HOME, window.homes);
 addBuilding(Math.floor(COLS/4) + 2, Math.floor(ROWS/4) + 2, 5, 5, HOME, window.homes);
 
 addBuilding(COLS - 15, ROWS - 15, 10, 10, WORK, window.works);
+
 addBuilding(12, Math.floor(ROWS/2) + 2, 8, 8, WORK, window.works);
+
+// City Hall in the center-ish
+addBuilding(Math.floor(COLS/2) - 4, Math.floor(ROWS/2) - 4, 10, 10, CITY_HALL, window.cityHalls);
+
 
 addBuilding(Math.floor(COLS/2) + 3, 5, 8, 8, CAFE, window.cafes);
 addBuilding(5, Math.floor(ROWS/4) + 2, 7, 7, HOSPITAL, window.hospitals);
@@ -191,9 +198,16 @@ window.drawMap = function() {
                     offCtx.fillRect(px + window.TILE_SIZE/2 - 2, py + 4, 4, window.TILE_SIZE - 8);
                     offCtx.fillRect(px + 4, py + window.TILE_SIZE/2 - 2, window.TILE_SIZE - 8, 4);
                 }
+
                 else if (tile === SHOP) {
                     offCtx.fillStyle = '#0ea5e9';
                     offCtx.fillRect(px, py, window.TILE_SIZE, window.TILE_SIZE);
+                }
+                else if (tile === CITY_HALL) {
+                    offCtx.fillStyle = '#ca8a04'; // Dark gold
+                    offCtx.fillRect(px, py, window.TILE_SIZE, window.TILE_SIZE);
+                    offCtx.fillStyle = '#eab308'; // Light gold border
+                    offCtx.fillRect(px + 4, py + 4, window.TILE_SIZE - 8, window.TILE_SIZE - 8);
                 }
                 else if (tile === WALL) {
                     offCtx.fillStyle = '#475569';
@@ -300,8 +314,139 @@ function updateWeather() {
 
 let gameTime = 8 * 60; // Start at 08:00
 let dayCount = 1;
+
 let animationId;
 let lastFrameTime = 0;
+
+// Election System
+let currentMayor = null;
+let electionDay = 3; // First election on day 3
+let candidates = [];
+let isElectionDay = false;
+
+function announce(msg, durationTicks = 120) {
+    let banner = document.getElementById('announcementBanner');
+    if (banner) {
+        banner.style.display = 'block';
+        banner.innerHTML = "📣 " + msg;
+        setTimeout(() => {
+            banner.style.display = 'none';
+        }, durationTicks * (isFastForward ? 50 : 200));
+    }
+}
+
+function handleElections() {
+    let hour = Math.floor(gameTime / 60);
+
+    // Start of election day (08:00)
+    if (dayCount === electionDay && hour === 8 && !isElectionDay) {
+        isElectionDay = true;
+
+        // Pick 3 random candidates who are not currently mayor
+        let eligible = people.filter(p => p !== currentMayor);
+        eligible.sort(() => Math.random() - 0.5);
+        candidates = eligible.slice(0, 3);
+
+
+        candidates.forEach(c => {
+            c.isCandidate = true;
+            c.partyName = generatePartyName();
+            c.votes = 0;
+            c.log("Выдвинул кандидатуру от " + c.partyName);
+        });
+
+        document.getElementById('electionPanel').style.display = 'block';
+        updateElectionUI();
+
+        announce(`Выборы начались! Кандидаты: ${candidates.map(c => c.name).join(", ")}`, 300);
+
+    }
+
+    // End of election day / Voting time (20:00)
+    if (isElectionDay && hour === 20) {
+        isElectionDay = false;
+
+        let votes = {};
+        candidates.forEach(c => votes[c.id] = 0);
+
+        // Everyone votes
+        people.forEach(voter => {
+            let bestCandidate = null;
+            let bestScore = -999;
+
+            candidates.forEach(c => {
+                let score = 0;
+                // Voters like friends
+                if (voter.relationships[c.id]) score += voter.relationships[c.id];
+                // Voters respect wealth (bribes/success)
+                score += c.money * 0.5;
+                // Self vote
+                if (voter === c) score += 999;
+
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestCandidate = c;
+                }
+            });
+
+
+            if (bestCandidate) {
+                votes[bestCandidate.id]++;
+                bestCandidate.votes++; // For UI
+                if(voter !== bestCandidate) voter.log(`Проголосовал за ${bestCandidate.name}.`);
+            }
+        });
+
+        updateElectionUI();
+
+
+        // Count votes
+        let winner = candidates[0];
+        let maxVotes = -1;
+        for (let cid in votes) {
+            if (votes[cid] > maxVotes) {
+                maxVotes = votes[cid];
+                winner = people.find(p => p.id == cid);
+            }
+        }
+
+        // Demote old mayor
+        if (currentMayor && currentMayor !== winner) {
+            currentMayor.profession = "Безработный";
+            currentMayor.workplace = null;
+            currentMayor.pixels[1] = [currentMayor.skinColor, currentMayor.baseColor, currentMayor.baseColor, currentMayor.skinColor]; // Reset clothes
+            currentMayor.log("Проиграл выборы. Сложил полномочия.");
+        }
+
+        // Promote new mayor
+        currentMayor = winner;
+        currentMayor.profession = "Мэр";
+        currentMayor.workplace = window.cityHalls[0]; // Mayor works at City Hall
+
+        // Mayor gets a golden jacket!
+        let gold = '#eab308';
+        for(let i=1; i<3; i++) {
+             for(let j=1; j<3; j++) {
+                 currentMayor.pixels[i][j] = gold;
+             }
+        }
+
+        currentMayor.log("УРА! Я стал новым Мэром!");
+        announce(`${currentMayor.fio} избран новым Мэром (${maxVotes} голосов)!`, 400);
+
+        // Clear candidates
+        candidates.forEach(c => c.isCandidate = false);
+        candidates = [];
+
+
+        document.getElementById('electionPanel').style.display = 'none';
+
+        // Next election in 3 days
+
+        electionDay += 3;
+    }
+}
+
 
 
 
@@ -339,6 +484,20 @@ const NAMES_LAST = ["Иванов", "Смирнов", "Кузнецов", "По�
 const NAMES_PATRO = ["Иванович", "Александрович", "Дмитриевич", "Сергеевич", "Андреевич", "Алексеевич", "Максимович", "Евгеньевич", "Михайлович", "Владимирович"];
 const NAMES_PATRO_F = ["Ивановна", "Александровна", "Дмитриевна", "Сергеевна", "Андреевна", "Алексеевна", "Максимовна", "Евгеньевна", "Михайловна", "Владимировна"];
 
+
+function generatePartyName() {
+    let adjs = ["Святого", "Квадратного", "Жидкого", "Золотого", "Тайного", "Мокрого", "Великого", "Быстрого", "Ржавого", "Липкого", "Бодрого", "Соленого", "Эпичного"];
+    let nouns = ["Борща", "Капибары", "Кванта", "Майонеза", "Тапочка", "Динозавра", "Кефира", "Трактора", "Сырка", "Безумия", "Бетона", "Пельменя"];
+
+    let adj = adjs[Math.floor(Math.random() * adjs.length)];
+    let noun = nouns[Math.floor(Math.random() * nouns.length)];
+
+    let prefix = Math.random() > 0.5 ? "Партия" : "Движение";
+
+    return `${prefix} ${adj} ${noun}`;
+}
+
+
 function generateFIO() {
     let first = NAMES_FIRST[Math.floor(Math.random() * NAMES_FIRST.length)];
     let last = NAMES_LAST[Math.floor(Math.random() * NAMES_LAST.length)];
@@ -371,6 +530,8 @@ class Person {
         let baseColor = `hsl(${Math.random() * 360}, 70%, 60%)`;
         let accentColor = `hsl(${Math.random() * 360}, 80%, 40%)`;
         let skinColor = Math.random() > 0.5 ? '#fcd34d' : '#f87171';
+        this.skinColor = skinColor;
+        this.baseColor = baseColor;
 
         this.profession = "Безработный";
         this.workplace = null;
@@ -557,6 +718,59 @@ class Person {
 
             let rel = this.relationships[other.id] || 0;
 
+            // CAMPAIGNING MECHANICS
+            if (this.isCandidate) {
+                // 1. Black PR / Debates against other candidates
+                if (other.isCandidate && Math.random() < 0.6) {
+                    this.log(`Устроил публичные дебаты с ${other.name}!`);
+                    this.say(`Твоя ${other.partyName} - это позор!`);
+                    other.say(`Сам такой!`);
+                    this.relationships[other.id] = rel - 30;
+                    other.relationships[this.id] = (other.relationships[this.id] || 0) - 30;
+                    this.addStatus("Злой", 60);
+
+                    // Bystanders react
+                    let bystanders = people.filter(p => p !== this && p !== other && Math.abs(p.x - this.x) <= 3 && Math.abs(p.y - this.y) <= 3);
+                    bystanders.forEach(b => {
+                         if (Math.random() > 0.5) {
+                             b.relationships[this.id] = (b.relationships[this.id] || 0) + 10;
+                             b.say(`${this.name} прав!`);
+                         } else {
+                             b.relationships[other.id] = (b.relationships[other.id] || 0) + 10;
+                             b.say(`${other.name} лучше!`);
+                         }
+                    });
+
+                    this.startChat(other, 60, "general");
+                    return;
+                }
+
+                // 2. Bribery!
+                if (!other.isCandidate && this.money > 25 && Math.random() < 0.3) {
+                    this.log(`Дал взятку ${other.name} за голос.`);
+                    this.say("Голосуй за меня, вот деньги!");
+                    other.say("Ого, спасибо!");
+                    this.money -= 10;
+                    other.money += 10;
+                    this.relationships[other.id] = rel + 50; // Bought their love
+                    other.relationships[this.id] = (other.relationships[this.id] || 0) + 50;
+                    this.startChat(other, 30, "general");
+                    return;
+                }
+
+                // 3. Campaigning slogans
+                if (!other.isCandidate && Math.random() < 0.5) {
+                    this.log(`Агитировал ${other.name}.`);
+                    this.say(`Голосуй за ${this.partyName}!`);
+                    other.say("Я подумаю...");
+                    this.relationships[other.id] = rel + 10;
+                    other.relationships[this.id] = (other.relationships[this.id] || 0) + 10;
+                    this.startChat(other, 40, "general");
+                    return;
+                }
+            }
+
+
             if (rel > 10 && Math.random() < 0.4) {
                 this.log(`Случайно встретил друга ${other.name}!`);
                 let theme = (this.profession === other.profession && this.profession !== "Безработный") ? "work" : "general";
@@ -650,7 +864,20 @@ class Person {
             targetLocation = window.cafes[Math.floor(Math.random() * window.cafes.length)];
         }
 
+
+        // 0. CAMPAIGNING (If candidate, prioritize park to talk to people)
+        let campaignUtility = 0;
+        if (this.isCandidate && hour >= 9 && hour <= 19) {
+            campaignUtility = 95; // Very high priority
+        }
+        if (campaignUtility > highestUtility) {
+            highestUtility = campaignUtility;
+            action = "Предвыборная кампания";
+            targetLocation = window.parks[Math.floor(Math.random() * window.parks.length)];
+        }
+
         // 3. WORK
+
         let workUtility = 0;
         if (hour >= 9 && hour <= 17 && this.energy > 30 && this.hunger > 30 && this.profession !== "Безработный") {
             workUtility = 80;
@@ -747,14 +974,23 @@ class Person {
                     this.addStatus("Болен", 120); // Sick for 2 hours
                 }
             }
+
             if (action.startsWith("Работа")) {
-                this.money += 2;
+                let pay = 2;
+                if (this.profession === "Мэр") pay = 15; // Mayors are rich
+
+                this.money += pay;
                 this.energy -= 0.1;
                 this.social -= 0.1;
                 if (this.statusEffects.find(s => s.name === "Злой")) {
                     this.money -= 1; // Angry workers perform poorly
                 }
             }
+            if (action === "Предвыборная кампания") {
+                this.social += 2;
+                this.energy -= 0.2;
+            }
+
             if (action === "Лечится") {
                 if (this.money >= 5) {
                     this.money -= 5;
@@ -880,6 +1116,8 @@ class Person {
         if (this.currentAction === "Сон") emoji = "💤";
         if (this.currentAction === "Ест в кафе") emoji = "🍔";
         if (this.currentAction.startsWith("Работа")) emoji = "💼";
+        if (this.profession === "Мэр") emoji = "👑"; // Always show crown for mayor
+        if (this.currentAction === "Предвыборная кампания") emoji = "📢";
         if (this.currentAction === "Лечится") emoji = "🏥";
         if (this.currentAction === "Шопинг") emoji = "🛍️";
         if (this.currentAction === "Разговор") emoji = "🗣️";
@@ -945,6 +1183,40 @@ function formatTime(minutes) {
 }
 
 
+
+function updateElectionUI() {
+    let list = document.getElementById('candidateList');
+    if (!list) return;
+    list.innerHTML = "";
+    candidates.forEach(c => {
+        let li = document.createElement('li');
+        li.style.marginBottom = "8px";
+        li.style.borderBottom = "1px solid #333";
+        li.style.paddingBottom = "4px";
+
+        let header = document.createElement('div');
+        header.style.fontWeight = "bold";
+        header.style.color = "#fff";
+        header.textContent = c.fio;
+
+        let party = document.createElement('div');
+        party.style.fontSize = "0.85em";
+        party.style.color = "#a78bfa";
+        party.style.fontStyle = "italic";
+        party.textContent = c.partyName;
+
+        let votes = document.createElement('div');
+        votes.style.color = "#4ade80";
+        votes.style.fontSize = "0.85em";
+        votes.textContent = "Голоса: " + (c.votes > 0 ? c.votes : "?"); // Reveal mostly at end
+
+        li.appendChild(header);
+        li.appendChild(party);
+        li.appendChild(votes);
+        list.appendChild(li);
+    });
+}
+
 function updateInspector() {
     if (selectedPerson) {
         insHint.style.display = 'none';
@@ -999,6 +1271,7 @@ function gameLoop(timestamp) {
             }
 
             updateWeather();
+            handleElections();
             if (gameTime % 60 === 0 && (gameTime === 7*60 || gameTime === 20*60)) mapNeedsRedraw = true;
 
             dayCountEl.textContent = dayCount;

@@ -27,8 +27,21 @@
             <p class="hint">Нажмите на любого персонажа, чтобы увидеть его мысли, потребности и память.</p>
         </div>
 
+
         <div class="dashboard">
+            <div id="announcementBanner" style="display: none; background: #eab308; color: #1a1a24; padding: 10px; margin-bottom: 15px; border-radius: 6px; font-weight: bold; text-align: center; border: 2px solid #ca8a04;">
+                📣 Выборы начались!
+            </div>
+
             <h2>Инспектор</h2>
+
+            <div class="election-panel" id="electionPanel" style="display: none; background: #252536; padding: 15px; border-radius: 6px; margin-bottom: 15px; border: 1px solid #ca8a04;">
+                <h3 style="color: #fde047; text-align: center; margin-top: 0; border-bottom: 1px solid #422006; padding-bottom: 5px;">🗳️ Выборы</h3>
+                <ul id="candidateList" style="list-style: none; padding: 0; margin: 0; font-size: 0.9em; color: #d1d5db;">
+                    <!-- Filled by JS -->
+                </ul>
+            </div>
+
             <div class="inspector" id="inspectorPanel">
                 <p class="inspector-hint">Выберите персонажа...</p>
 
@@ -76,6 +89,9 @@
                 <li><span class="color-box" style="background: #22c55e;"></span> Парк (Общение)</li>
                 <li><span class="color-box" style="background: #f43f5e;"></span> Больница (Лечение)</li>
                 <li><span class="color-box" style="background: #0ea5e9;"></span> Магазин (Покупки)</li>
+
+                <li><span class="color-box" style="background: #eab308;"></span> Мэрия (Управление)</li>
+
             </ul>
         </div>
 
