@@ -3,27 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Particle Life Simulation</title>
+    <title>Ecosystem Evolution</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
-        <h1>Particle Life (Artificial Life)</h1>
+        <h1>Evolution of Intelligence</h1>
+        <p class="description">Watch creatures evolve to find food (green) and avoid poison (red) using genetic algorithms.</p>
+
         <div class="controls">
             <button id="toggleBtn">Pause</button>
-            <button id="randomizeRulesBtn">Randomize Laws of Physics 🌌</button>
-            <button id="resetParticlesBtn">Reset Particles</button>
+            <button id="resetBtn">Extinction (Reset)</button>
+            <label><input type="checkbox" id="debugCheckbox"> Show Perception Radii</label>
         </div>
-        <div class="sliders">
-            <label>Friction: <input type="range" id="frictionSlider" min="1" max="99" value="50"></label>
-            <label>Interaction Radius: <input type="range" id="radiusSlider" min="10" max="200" value="80"></label>
-            <label><input type="checkbox" id="trailsCheckbox" checked> Show Trails</label>
+
+        <div class="stats">
+            <span>Population: <span id="popCount">0</span></span>
+            <span>Food: <span id="foodCount">0</span></span>
+            <span>Poison: <span id="poisonCount">0</span></span>
+            <span>Highest Age: <span id="maxAge">0</span></span>
         </div>
+
         <div class="canvas-container">
             <canvas id="simCanvas" width="800" height="600"></canvas>
             <div id="fpsCounter">FPS: 0</div>
         </div>
-        <p class="instructions">Click "Randomize Laws of Physics" to discover new emergent behaviors (organisms, crystals, swarms).</p>
+
+        <p class="instructions">You can click on the canvas to manually spawn food.</p>
     </div>
     <script src="script.js"></script>
 </body>

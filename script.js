@@ -2,249 +2,382 @@ const canvas = document.getElementById('simCanvas');
 const ctx = canvas.getContext('2d');
 
 const toggleBtn = document.getElementById('toggleBtn');
-const randomizeRulesBtn = document.getElementById('randomizeRulesBtn');
-const resetParticlesBtn = document.getElementById('resetParticlesBtn');
-const frictionSlider = document.getElementById('frictionSlider');
-const radiusSlider = document.getElementById('radiusSlider');
-const trailsCheckbox = document.getElementById('trailsCheckbox');
+const resetBtn = document.getElementById('resetBtn');
+const debugCheckbox = document.getElementById('debugCheckbox');
+
+const popCountEl = document.getElementById('popCount');
+const foodCountEl = document.getElementById('foodCount');
+const poisonCountEl = document.getElementById('poisonCount');
+const maxAgeEl = document.getElementById('maxAge');
 const fpsCounter = document.getElementById('fpsCounter');
 
-// Configuration
 const width = canvas.width;
 const height = canvas.height;
-let isRunning = true;
-let animationId;
-let useTrails = true;
 
-// FPS
+let isRunning = true;
+let debugMode = false;
+let animationId;
 let lastTime = 0;
 let frameCount = 0;
 
-// Physics parameters
-let friction = 0.5;
-let maxRadius = 80;
+let vehicles = [];
+let food = [];
+let poison = [];
 
-// Particle setup - increased significantly for better emergence!
-const numParticlesPerColor = 800; // Total: 4800 particles
-const colors = ['#ef4444', '#22c55e', '#3b82f6', '#eab308', '#a855f7', '#06b6d4']; // Red, Green, Blue, Yellow, Purple, Cyan
-let particles = [];
-let rules = [];
+// Evolution configuration
+const MUTATION_RATE = 0.05;
+const MAX_SPEED = 4;
+const MAX_FORCE = 0.2;
+const FOOD_NUTRITION = 0.3;
+const POISON_NUTRITION = -0.7;
+const REPRODUCTION_THRESHOLD = 2.5; // Health needed to reproduce
 
-// Spatial Hashing Grid
-// We will divide the screen into a grid of cells.
-// A particle in cell (cx, cy) only needs to check neighboring cells.
-let grid = [];
-let cellSize = maxRadius;
-let cols = 0;
-let rows = 0;
-
-function updateGridSize() {
-    let newCellSize = parseInt(radiusSlider.value);
-    let newCols = Math.ceil(width / newCellSize);
-    let newRows = Math.ceil(height / newCellSize);
-
-    // Only reallocate if dimensions change to save GC overhead
-    if (cellSize !== newCellSize || cols !== newCols || rows !== newRows) {
-        cellSize = newCellSize;
-        cols = newCols;
-        rows = newRows;
-        grid = new Array(cols * rows).fill(null).map(() => []);
-    } else {
-        // Just clear the existing arrays (much faster for Garbage Collector)
-        for (let i = 0; i < grid.length; i++) {
-            grid[i].length = 0;
-        }
+// Helper vector functions
+function magnitude(vx, vy) { return Math.sqrt(vx*vx + vy*vy); }
+function normalize(vx, vy) {
+    let m = magnitude(vx, vy);
+    if (m > 0) return {x: vx/m, y: vy/m};
+    return {x: vx, y: vy};
+}
+function distance(x1, y1, x2, y2) {
+    let dx = x1 - x2; let dy = y1 - y2;
+    return Math.sqrt(dx*dx + dy*dy);
+}
+function limit(vx, vy, max) {
+    let m = magnitude(vx, vy);
+    if (m > max) {
+        let n = normalize(vx, vy);
+        return {x: n.x * max, y: n.y * max};
     }
+    return {x: vx, y: vy};
 }
 
-function randomizeRules() {
-    rules = [];
-    for (let i = 0; i < colors.length; i++) {
-        let row = [];
-        for (let j = 0; j < colors.length; j++) {
-            row.push(Math.random() * 2 - 1);
+class Vehicle {
+    constructor(x, y, dna) {
+        this.x = x;
+        this.y = y;
+        this.vx = (Math.random() * 2 - 1) * MAX_SPEED;
+        this.vy = (Math.random() * 2 - 1) * MAX_SPEED;
+        this.ax = 0;
+        this.ay = 0;
+        this.r = 4; // base radius
+        this.health = 1.0;
+        this.age = 0;
+
+        // DNA contains 4 genes:
+        // 0: Food Attraction Weight (-2 to +2)
+        // 1: Poison Attraction Weight (-2 to +2)
+        // 2: Food Perception Radius (10 to 150)
+        // 3: Poison Perception Radius (10 to 150)
+        if (dna) {
+            this.dna = dna;
+        } else {
+            this.dna = [
+                (Math.random() * 4) - 2,
+                (Math.random() * 4) - 2,
+                (Math.random() * 140) + 10,
+                (Math.random() * 140) + 10
+            ];
         }
-        rules.push(row);
-    }
-}
-
-function initParticles() {
-    particles = [];
-    for (let i = 0; i < colors.length; i++) {
-        for (let j = 0; j < numParticlesPerColor; j++) {
-            particles.push({
-                x: Math.random() * width,
-                y: Math.random() * height,
-                vx: 0,
-                vy: 0,
-                colorIndex: i,
-                color: colors[i]
-            });
-        }
-    }
-}
-
-function updateParticles() {
-    friction = frictionSlider.value / 100;
-
-    // Clear and populate spatial grid
-    updateGridSize();
-
-    for (let i = 0; i < particles.length; i++) {
-        let p = particles[i];
-        let cx = Math.floor(p.x / cellSize);
-        let cy = Math.floor(p.y / cellSize);
-        // Ensure within bounds just in case
-        cx = (cx + cols) % cols;
-        cy = (cy + rows) % rows;
-        grid[cy * cols + cx].push(p);
     }
 
-    let maxRadSq = cellSize * cellSize;
+    update() {
+        // Apply acceleration to velocity
+        this.vx += this.ax;
+        this.vy += this.ay;
+        let limited = limit(this.vx, this.vy, MAX_SPEED);
+        this.vx = limited.x;
+        this.vy = limited.y;
 
-    for (let i = 0; i < particles.length; i++) {
-        let p1 = particles[i];
-        let fx = 0;
-        let fy = 0;
+        // Update position
+        this.x += this.vx;
+        this.y += this.vy;
 
-        let cx = Math.floor(p1.x / cellSize);
-        let cy = Math.floor(p1.y / cellSize);
+        // Reset acceleration
+        this.ax = 0;
+        this.ay = 0;
 
-        // Check 9 neighboring cells (3x3), including wrapping for toroidal space
-        for (let yOff = -1; yOff <= 1; yOff++) {
-            for (let xOff = -1; xOff <= 1; xOff++) {
+        // Boundaries
+        this.x = (this.x + width) % width;
+        this.y = (this.y + height) % height;
 
-                let nx = (cx + xOff + cols) % cols;
-                let ny = (cy + yOff + rows) % rows;
-                let cellIndex = ny * cols + nx;
-                let neighbors = grid[cellIndex];
+        // Aging and health decay
+        this.health -= 0.003;
+        this.age++;
+    }
 
-                for (let j = 0; j < neighbors.length; j++) {
-                    let p2 = neighbors[j];
-                    if (p1 === p2) continue;
+    applyForce(fx, fy) {
+        this.ax += fx;
+        this.ay += fy;
+    }
 
-                    let dx = p1.x - p2.x;
-                    let dy = p1.y - p2.y;
+    seek(targetX, targetY, weight) {
+        let desiredX = targetX - this.x;
+        let desiredY = targetY - this.y;
 
-                    // Toroidal wrap distance
-                    if (dx > width / 2) dx -= width;
-                    else if (dx < -width / 2) dx += width;
+        // Shortest path handling for toroidal world
+        if (desiredX > width/2) desiredX -= width;
+        else if (desiredX < -width/2) desiredX += width;
+        if (desiredY > height/2) desiredY -= height;
+        else if (desiredY < -height/2) desiredY += height;
 
-                    if (dy > height / 2) dy -= height;
-                    else if (dy < -height / 2) dy += height;
+        let m = magnitude(desiredX, desiredY);
+        if (m === 0) return {x:0, y:0};
 
-                    let d2 = dx * dx + dy * dy;
+        let norm = normalize(desiredX, desiredY);
+        desiredX = norm.x * MAX_SPEED;
+        desiredY = norm.y * MAX_SPEED;
 
-                    if (d2 > 0 && d2 < maxRadSq) {
-                        let d = Math.sqrt(d2);
-                        let force = rules[p1.colorIndex][p2.colorIndex];
+        let steerX = desiredX - this.vx;
+        let steerY = desiredY - this.vy;
 
-                        // Collision avoidance
-                        if (d < 5) {
-                            force = 3;
-                        }
+        let steerLim = limit(steerX, steerY, MAX_FORCE);
+        return {x: steerLim.x * weight, y: steerLim.y * weight};
+    }
 
-                        let strength = force * (1 - d / cellSize);
+    eat(list, nutrition, perceptionRadius) {
+        let record = Infinity;
+        let closest = -1;
 
-                        fx += (dx / d) * strength;
-                        fy += (dy / d) * strength;
-                    }
-                }
+        for (let i = list.length - 1; i >= 0; i--) {
+            let item = list[i];
+
+            // Calc distance considering toroidal world
+            let dx = this.x - item.x;
+            let dy = this.y - item.y;
+            if (dx > width/2) dx -= width;
+            else if (dx < -width/2) dx += width;
+            if (dy > height/2) dy -= height;
+            else if (dy < -height/2) dy += height;
+
+            let d = Math.sqrt(dx*dx + dy*dy);
+
+            if (d < this.r + 2) {
+                // Eaten!
+                list.splice(i, 1);
+                this.health += nutrition;
+            } else if (d < record && d < perceptionRadius) {
+                record = d;
+                closest = i;
             }
         }
 
-        p1.vx = (p1.vx + fx) * friction;
-        p1.vy = (p1.vy + fy) * friction;
-
-        let speed = Math.sqrt(p1.vx * p1.vx + p1.vy * p1.vy);
-        if (speed > 15) {
-            p1.vx = (p1.vx / speed) * 15;
-            p1.vy = (p1.vy / speed) * 15;
+        if (closest > -1) {
+            return this.seek(list[closest].x, list[closest].y, 1);
         }
+        return {x:0, y:0};
     }
 
-    // Apply positions
-    for (let i = 0; i < particles.length; i++) {
-        let p = particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
+    behaviors(good, bad) {
+        let steerG = this.eat(good, FOOD_NUTRITION, this.dna[2]);
+        let steerB = this.eat(bad, POISON_NUTRITION, this.dna[3]);
 
-        if (p.x < 0) p.x += width;
-        else if (p.x >= width) p.x -= width;
-        if (p.y < 0) p.y += height;
-        else if (p.y >= height) p.y -= height;
+        this.applyForce(steerG.x * this.dna[0], steerG.y * this.dna[0]);
+        this.applyForce(steerB.x * this.dna[1], steerB.y * this.dna[1]);
+    }
+
+    reproduce() {
+        if (Math.random() < 0.002 && this.health > REPRODUCTION_THRESHOLD) {
+            let childDNA = [...this.dna];
+
+            // Mutate
+            for (let i = 0; i < childDNA.length; i++) {
+                if (Math.random() < MUTATION_RATE) {
+                    if (i < 2) childDNA[i] += (Math.random() * 0.4 - 0.2); // mutate weights
+                    else childDNA[i] += (Math.random() * 20 - 10);        // mutate radii
+
+                    // Clamp values
+                    if (i < 2) {
+                        childDNA[i] = Math.max(-2, Math.min(2, childDNA[i]));
+                    } else {
+                        childDNA[i] = Math.max(10, Math.min(150, childDNA[i]));
+                    }
+                }
+            }
+
+            this.health -= 1.0; // Childbirth costs energy
+            return new Vehicle(this.x, this.y, childDNA);
+        }
+        return null;
+    }
+
+    draw(ctx) {
+        let angle = Math.atan2(this.vy, this.vx);
+
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(angle);
+
+        if (debugMode) {
+            // Draw perception radii
+            ctx.beginPath();
+            ctx.arc(0, 0, this.dna[2], 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(34, 197, 94, 0.2)'; // Green for food
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(0, 0, this.dna[3], 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(239, 68, 68, 0.2)'; // Red for poison
+            ctx.stroke();
+
+            // Draw force lines (length indicates weight)
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(this.dna[0] * 20, 0);
+            ctx.strokeStyle = 'rgba(34, 197, 94, 0.8)';
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(this.dna[1] * 20, 0);
+            ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)';
+            ctx.stroke();
+        }
+
+        // Draw body (Triangle pointing right)
+        // Color blends based on health
+        let colorMix = Math.max(0, Math.min(1, this.health));
+        let r = Math.floor(255 * (1 - colorMix) + 100 * colorMix);
+        let g = Math.floor(100 * (1 - colorMix) + 200 * colorMix);
+        ctx.fillStyle = `rgba(${r}, ${g}, 150, 0.8)`;
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1;
+
+        ctx.beginPath();
+        ctx.moveTo(this.r * 2, 0);
+        ctx.lineTo(-this.r, -this.r);
+        ctx.lineTo(-this.r, this.r);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.restore();
+    }
+
+    dead() {
+        return (this.health <= 0);
     }
 }
 
-function drawParticles() {
-    if (useTrails) {
-        // Trails effect: draw a semi-transparent black rectangle over the previous frame
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-        ctx.fillRect(0, 0, width, height);
-    } else {
-        ctx.clearRect(0, 0, width, height);
-        // Ensure solid background if trails are off
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, width, height);
+function spawnItems(arr, count) {
+    for (let i = 0; i < count; i++) {
+        arr.push({ x: Math.random() * width, y: Math.random() * height });
+    }
+}
+
+function init() {
+    vehicles = [];
+    food = [];
+    poison = [];
+
+    // Initial population
+    for (let i = 0; i < 50; i++) {
+        vehicles.push(new Vehicle(Math.random() * width, Math.random() * height));
     }
 
-    for (let i = 0; i < particles.length; i++) {
-        let p = particles[i];
-        ctx.fillStyle = p.color;
-        ctx.fillRect(p.x, p.y, 2, 2); // Slightly smaller particles to accommodate the huge count
-    }
+    spawnItems(food, 100);
+    spawnItems(poison, 30);
 }
 
 function loop(timestamp) {
-    if (isRunning) {
-        updateParticles();
-        drawParticles();
-
-        // Calculate FPS
-        frameCount++;
-        if (timestamp - lastTime >= 1000) {
-            fpsCounter.textContent = `FPS: ${frameCount}`;
-            frameCount = 0;
-            lastTime = timestamp;
-        }
-    } else {
-        lastTime = timestamp; // Prevent FPS spike when resuming
+    if (!isRunning) {
+        lastTime = timestamp;
+        animationId = requestAnimationFrame(loop);
+        return;
     }
+
+    // Clear background
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, 0, width, height);
+
+    // Random spawns
+    if (Math.random() < 0.1) food.push({ x: Math.random() * width, y: Math.random() * height });
+    if (Math.random() < 0.02) poison.push({ x: Math.random() * width, y: Math.random() * height });
+
+    // Draw Food
+    ctx.fillStyle = '#22c55e';
+    for (let i = 0; i < food.length; i++) {
+        ctx.beginPath();
+        ctx.arc(food[i].x, food[i].y, 2, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Draw Poison
+    ctx.fillStyle = '#ef4444';
+    for (let i = 0; i < poison.length; i++) {
+        ctx.beginPath();
+        ctx.arc(poison[i].x, poison[i].y, 2, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    let highestAge = 0;
+
+    // Update Vehicles
+    for (let i = vehicles.length - 1; i >= 0; i--) {
+        let v = vehicles[i];
+
+        v.behaviors(food, poison);
+        v.update();
+        v.draw(ctx);
+
+        if (v.age > highestAge) highestAge = v.age;
+
+        let child = v.reproduce();
+        if (child != null) {
+            vehicles.push(child);
+        }
+
+        if (v.dead()) {
+            // Drop a food when dying (circle of life)
+            food.push({x: v.x, y: v.y});
+            vehicles.splice(i, 1);
+        }
+    }
+
+    // Automatically restock population if extinction happens
+    if (vehicles.length === 0) {
+        init();
+    }
+
+    // Update UI
+    popCountEl.textContent = vehicles.length;
+    foodCountEl.textContent = food.length;
+    poisonCountEl.textContent = poison.length;
+    maxAgeEl.textContent = highestAge;
+
+    // FPS
+    frameCount++;
+    if (timestamp - lastTime >= 1000) {
+        fpsCounter.textContent = `FPS: ${frameCount}`;
+        frameCount = 0;
+        lastTime = timestamp;
+    }
+
     animationId = requestAnimationFrame(loop);
 }
 
-// Event Listeners
+// Events
 toggleBtn.addEventListener('click', () => {
     isRunning = !isRunning;
     toggleBtn.textContent = isRunning ? "Pause" : "Start";
 });
 
-randomizeRulesBtn.addEventListener('click', () => {
-    randomizeRules();
+resetBtn.addEventListener('click', init);
+
+debugCheckbox.addEventListener('change', (e) => {
+    debugMode = e.target.checked;
 });
 
-resetParticlesBtn.addEventListener('click', () => {
-    initParticles();
-    // Clear trails immediately
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, width, height);
-});
-
-trailsCheckbox.addEventListener('change', (e) => {
-    useTrails = e.target.checked;
-    if (!useTrails) {
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, width, height);
+canvas.addEventListener('click', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    // Spawn a burst of food on click
+    for (let i = 0; i < 5; i++) {
+        food.push({ x: x + (Math.random()*20-10), y: y + (Math.random()*20-10) });
     }
 });
 
-// Boot up
-randomizeRules();
-initParticles();
-updateGridSize();
-
-// Fill initial background
-ctx.fillStyle = '#000';
-ctx.fillRect(0, 0, width, height);
-
+// Boot
+init();
 requestAnimationFrame(loop);
