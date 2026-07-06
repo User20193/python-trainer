@@ -115,6 +115,22 @@ const memoryLog = document.getElementById('memoryLog');
 
 let isRunning = true;
 let isFastForward = false;
+
+window.weather = "Sunny";
+window.weatherTimer = 0;
+function updateWeather() {
+    window.weatherTimer -= 5;
+    if (window.weatherTimer <= 0) {
+        if (Math.random() < 0.2) {
+            window.weather = "Raining";
+            window.weatherTimer = 180; // 3 hours of rain
+        } else {
+            window.weather = "Sunny";
+            window.weatherTimer = 300;
+        }
+    }
+}
+
 let gameTime = 8 * 60; // Start at 08:00
 let dayCount = 1;
 let animationId;
@@ -140,10 +156,20 @@ class Person {
         this.money = 50;
 
         // AI State
+
+        // AI State
         this.currentAction = "Idle";
         this.path = [];
         this.target = null;
         this.memory = [];
+
+        // Emergence stats/traits
+        this.statusEffects = []; // e.g. "Cold", "Angry"
+        this.inventory = [];
+
+        // Relationships: person.id -> relationship value (-100 to 100)
+        this.relationships = {};
+
 
         // Personality (Decay rates)
         this.decay = {
@@ -155,22 +181,49 @@ class Person {
         this.log("Woke up in MiniVille.");
     }
 
+
     log(msg) {
         let timeStr = formatTime(gameTime);
         this.memory.unshift(`[${timeStr}] ${msg}`);
-        if (this.memory.length > 5) this.memory.pop();
+        if (this.memory.length > 8) this.memory.pop();
     }
+
+    addStatus(status, duration) {
+        let existing = this.statusEffects.find(s => s.name === status);
+        if (existing) {
+            existing.duration = Math.max(existing.duration, duration);
+        } else {
+            this.statusEffects.push({name: status, duration: duration});
+            this.log(`Gained status: ${status}`);
+        }
+    }
+
 
     update() {
         // Decay needs over time
-        this.energy -= this.decay.energy;
+        let eDecay = this.decay.energy;
+        if (this.statusEffects.find(s => s.name === "Sick")) eDecay *= 2.0; // Sickness drains energy
+
+        this.energy -= eDecay;
         this.hunger -= this.decay.hunger;
-        this.social -= this.decay.social;
+
+        let sDecay = this.decay.social;
+        if (this.statusEffects.find(s => s.name === "Angry")) sDecay *= 0.5; // Angry people don't want to talk as much
+        this.social -= sDecay;
 
         // Clamp
         this.energy = Math.max(0, Math.min(100, this.energy));
         this.hunger = Math.max(0, Math.min(100, this.hunger));
         this.social = Math.max(0, Math.min(100, this.social));
+
+        // Update statuses
+        for (let i = this.statusEffects.length - 1; i >= 0; i--) {
+            this.statusEffects[i].duration -= 5; // 5 mins per tick
+            if (this.statusEffects[i].duration <= 0) {
+                this.log(`Lost status: ${this.statusEffects[i].name}`);
+                this.statusEffects.splice(i, 1);
+            }
+        }
 
         // Movement along path
         if (this.path && this.path.length > 0) {
@@ -181,9 +234,21 @@ class Person {
             return; // Busy walking
         }
 
+
         // Utility AI: Evaluate needs and pick action
+
+        // Weather effects on emergence
+        if (window.weather === "Raining" && this.currentAction !== "Sleeping" && this.currentAction !== "Working" && this.currentAction !== "Eating at Cafe") {
+             if (Math.random() < 0.05) {
+                 this.addStatus("Sick", 200);
+                 this.log("Got sick from the rain.");
+             }
+        }
+
         this.decideAction();
+
     }
+
 
     decideAction() {
         let hour = Math.floor(gameTime / 60);
@@ -243,28 +308,87 @@ class Person {
                 }
             }
         } else {
+
             // Arrived at destination, perform action effects
-            if (action === "Sleeping") this.energy += 5;
+            if (action === "Sleeping") {
+                this.energy += 5;
+                if (this.statusEffects.find(s => s.name === "Sick")) this.energy += 2; // Sleep helps sickness
+            }
             if (action === "Eating at Cafe") {
                 this.hunger += 10;
                 this.money -= 0.5;
+                // Chance to get sick from cafe
+                if (Math.random() < 0.01) {
+                    this.addStatus("Sick", 120); // Sick for 2 hours
+                }
             }
             if (action === "Working") {
                 this.money += 2;
                 this.energy -= 0.1;
                 this.social -= 0.1;
-            }
-            if (action === "Socializing in Park") {
-                this.social += 5;
-                // Interaction logic: check if someone else is on the same tile
-                for (let p of people) {
-                    if (p !== this && p.x === this.x && p.y === this.y) {
-                        this.social += 10;
-                        if (Math.random() < 0.05) this.log(`Had a great chat with ${p.name}.`);
-                        break;
-                    }
+                if (this.statusEffects.find(s => s.name === "Angry")) {
+                    this.money -= 1; // Angry workers perform poorly
                 }
             }
+
+            // Emergent Interactions Engine
+            let othersHere = people.filter(p => p !== this && p.x === this.x && p.y === this.y && p.currentAction === this.currentAction);
+
+            if (action === "Socializing in Park" || othersHere.length > 0) {
+                this.social += 5;
+
+                for (let other of othersHere) {
+                    let rel = this.relationships[other.id] || 0;
+
+                    // Condition 1: Both are hungry and one has food (simulated by money right now)
+                    if (this.hunger < 30 && other.hunger < 30 && other.money > 20 && this.money < 10 && action !== "Working") {
+                        if (Math.random() < 0.1) {
+                            this.log(`Begged ${other.name} for food.`);
+                            this.hunger += 30;
+                            other.money -= 10;
+                            this.relationships[other.id] = rel - 5; // They don't like beggars
+                            other.addStatus("Annoyed", 60);
+                        }
+                    }
+
+                    // Condition 2: Angry person meets someone
+                    if (this.statusEffects.find(s => s.name === "Angry")) {
+                        if (Math.random() < 0.2) {
+                            this.log(`Yelled at ${other.name}!`);
+                            other.addStatus("Angry", 120); // Spread anger
+                            this.relationships[other.id] = rel - 15;
+                            this.statusEffects = this.statusEffects.filter(s => s.name !== "Angry"); // Relieved anger
+                            this.log("Felt better after yelling.");
+                        }
+                    }
+                    // Condition 3: Normal chat
+                    else if (Math.random() < 0.1) {
+                        if (rel > 10) {
+                            this.log(`Had a wonderful chat with friend ${other.name}.`);
+                            this.social += 15;
+                            this.energy += 2; // Good chats energize
+                        } else if (other.statusEffects.find(s => s.name === "Sick")) {
+                             this.log(`Talked to ${other.name}, but they sneezed on me.`);
+                             if (Math.random() < 0.5) this.addStatus("Sick", 180);
+                        } else {
+                            this.log(`Had a chat with ${other.name}.`);
+                            this.social += 10;
+                            this.relationships[other.id] = rel + 2;
+                        }
+                    }
+
+                    // Random argument
+                    if (Math.random() < 0.005) {
+                        this.log(`Got into a fight with ${other.name}!`);
+                        this.addStatus("Angry", 120);
+                        other.addStatus("Angry", 120);
+                        this.relationships[other.id] = rel - 20;
+                    }
+
+                    break; // Interact with one person at a time
+                }
+            }
+
         }
     }
 
@@ -320,13 +444,17 @@ function formatTime(minutes) {
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
 }
 
+
 function updateInspector() {
     if (selectedPerson) {
         insHint.style.display = 'none';
         insData.style.display = 'block';
 
         insName.textContent = selectedPerson.name;
-        insAction.textContent = selectedPerson.currentAction;
+
+        let statuses = selectedPerson.statusEffects.map(s => s.name).join(", ");
+        let statStr = statuses ? ` [${statuses}]` : "";
+        insAction.textContent = selectedPerson.currentAction + statStr;
 
         barEnergy.style.width = `${selectedPerson.energy}%`;
         barHunger.style.width = `${selectedPerson.hunger}%`;
@@ -358,13 +486,17 @@ function gameLoop(timestamp) {
 
         if (timeStep > updateInterval) {
             gameTime += 5; // advance 5 minutes per tick
+
             if (gameTime >= 24 * 60) {
                 gameTime = 0;
                 dayCount++;
             }
 
+            updateWeather();
+
             dayCountEl.textContent = dayCount;
-            clockTimeEl.textContent = formatTime(gameTime);
+            clockTimeEl.textContent = formatTime(gameTime) + ` (${window.weather})`;
+
 
             for (let p of people) {
                 p.update();
