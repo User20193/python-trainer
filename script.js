@@ -203,6 +203,35 @@ let dayCount = 1;
 let animationId;
 let lastFrameTime = 0;
 
+
+// Procedural Dialogue Engine
+const DICTIONARY = {
+    greetings: ["Привет", "Здравствуй", "Хей", "Рад видеть", "О, привет"],
+    friendlyVerbs: ["обсудим", "посмотрим на", "как тебе", "слышал про", "давай похвалим"],
+    friendlyNouns: ["погоду", "новое кафе", "работу", "этот парк", "наших соседей"],
+    angryVerbs: ["ненавижу", "меня бесит", "уйди от", "хватит портить", "почему ты ломаешь"],
+    angryNouns: ["мой день", "всё вокруг", "мои планы", "мою жизнь", "эту улицу"],
+    begging: ["Пожалуйста, дай", "Умоляю, мне нужна", "Одолжи немного", "Спаси, нужна"],
+    beggingNouns: ["еда", "мелочь", "помощь", "вода"],
+    sick: ["Апчхи!", "Кхе-кхе...", "Ох, как всё болит...", "Голова раскалывается..."]
+};
+
+function generateDialogue(type) {
+    let pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+    if (type === "friendly") {
+        return `${pick(DICTIONARY.greetings)}, ${pick(DICTIONARY.friendlyVerbs)} ${pick(DICTIONARY.friendlyNouns)}?`;
+    } else if (type === "angry") {
+        return `Я ${pick(DICTIONARY.angryVerbs)} ${pick(DICTIONARY.angryNouns)}!`;
+    } else if (type === "begging") {
+        return `${pick(DICTIONARY.begging)} ${pick(DICTIONARY.beggingNouns)}!`;
+    } else if (type === "sick") {
+        return pick(DICTIONARY.sick);
+    }
+    return "...";
+}
+
+
 const NAMES = ["Алиса", "Борис", "Виктор", "Даша", "Елена", "Федор", "Галина", "Харитон"];
 
 class Person {
@@ -235,6 +264,8 @@ class Person {
         this.path = [];
         this.target = null;
         this.memory = [];
+        this.speechBubble = "";
+        this.speechTimer = 0;
 
         // Emergence stats/traits
         this.statusEffects = []; // e.g. "Cold", "Злой"
@@ -252,6 +283,14 @@ class Person {
         };
 
         this.log("Проснулся в МиниГраде.");
+    }
+
+
+
+    say(text) {
+        this.speechBubble = text;
+        this.speechTimer = 150; // Show for about 3 seconds in-game time ticks
+        this.log(`Сказал: "${text}"`);
     }
 
 
@@ -273,6 +312,8 @@ class Person {
 
 
     update() {
+        if (this.speechTimer > 0) this.speechTimer -= 5;
+
         // Decay needs over time
         let eDecay = this.decay.energy;
         if (this.statusEffects.find(s => s.name === "Болен")) eDecay *= 2.0; // Sickness drains energy
@@ -338,6 +379,8 @@ class Person {
             // Friends stopping to chat
             if (rel > 20 && Math.random() < 0.2) {
                 this.log(`Случайно встретил друга ${other.name}!`);
+                this.say(generateDialogue("friendly"));
+                if(Math.random() > 0.5) other.say(generateDialogue("friendly"));
                 this.social += 5;
                 other.social += 5;
                 // Minor delay (stop moving for a turn by not progressing path if we implement a wait timer,
@@ -347,6 +390,8 @@ class Person {
             // Enemies fighting on sight!
             if (rel < -20 && Math.random() < 0.3) {
                 this.log(`Увидел врага ${other.name} и завязалась драка!`);
+                this.say(generateDialogue("angry"));
+                other.say(generateDialogue("angry"));
                 this.energy -= 10;
                 other.energy -= 10;
                 this.addStatus("Злой", 100);
@@ -365,6 +410,8 @@ class Person {
             // Desperate stealing
             if (this.hunger < 20 && this.money < 5 && other.money > 20 && Math.random() < 0.1) {
                 this.log(`Украл деньги у ${other.name} от отчаяния!`);
+                this.say("Прости, мне нужно выжить!");
+                other.say(generateDialogue("angry"));
                 this.money += 15;
                 other.money -= 15;
                 this.relationships[other.id] = rel - 50;
@@ -492,6 +539,8 @@ class Person {
                     if (this.hunger < 30 && other.hunger < 30 && other.money > 20 && this.money < 10 && action !== "Работа") {
                         if (Math.random() < 0.1) {
                             this.log(`Выпросил еду у ${other.name}.`);
+                            this.say(generateDialogue("begging"));
+                            other.say("Ладно, держи...");
                             this.hunger += 30;
                             other.money -= 10;
                             this.relationships[other.id] = rel - 5; // They don't like beggars
@@ -503,6 +552,7 @@ class Person {
                     if (this.statusEffects.find(s => s.name === "Злой")) {
                         if (Math.random() < 0.2) {
                             this.log(`Наорал на ${other.name}!`);
+                            this.say(generateDialogue("angry"));
                             other.addStatus("Злой", 120); // Spread anger
                             this.relationships[other.id] = rel - 15;
                             this.statusEffects = this.statusEffects.filter(s => s.name !== "Злой"); // Relieved anger
@@ -513,13 +563,16 @@ class Person {
                     else if (Math.random() < 0.1) {
                         if (rel > 10) {
                             this.log(`Отлично поболтал с другом ${other.name}.`);
+                            this.say(generateDialogue("friendly"));
                             this.social += 15;
                             this.energy += 2; // Good chats energize
                         } else if (other.statusEffects.find(s => s.name === "Болен")) {
                              this.log(`Говорил с ${other.name}, и он чихнул на меня.`);
+                             other.say(generateDialogue("sick"));
                              if (Math.random() < 0.5) this.addStatus("Болен", 180);
                         } else {
                             this.log(`Поболтал с ${other.name}.`);
+                            this.say(generateDialogue("friendly"));
                             this.social += 10;
                             this.relationships[other.id] = rel + 2;
                         }
@@ -528,6 +581,8 @@ class Person {
                     // Random argument
                     if (Math.random() < 0.005) {
                         this.log(`Подрался с ${other.name}!`);
+                        this.say(generateDialogue("angry"));
+                        other.say(generateDialogue("angry"));
                         this.addStatus("Злой", 120);
                         other.addStatus("Злой", 120);
                         this.relationships[other.id] = rel - 20;
@@ -586,12 +641,38 @@ class Person {
         if (this.statusEffects.find(s => s.name === "Болен")) emoji = "🤒";
 
 
+
         if (emoji) {
             ctx.font = "16px Arial";
             ctx.textAlign = "center";
             ctx.fillText(emoji, vx + window.TILE_SIZE / 2,
                                vy + 10);
         }
+
+        // Draw speech bubble
+        if (this.speechTimer > 0 && this.speechBubble !== "") {
+            ctx.font = "12px sans-serif";
+            let textWidth = ctx.measureText(this.speechBubble).width;
+            let padding = 4;
+
+            let bx = vx + window.TILE_SIZE / 2 - textWidth / 2;
+            let by = vy - 15;
+
+            // Bubble background
+            ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+            ctx.beginPath();
+            ctx.roundRect(bx - padding, by - 12 - padding, textWidth + padding * 2, 16 + padding * 2, 4);
+            ctx.fill();
+            ctx.strokeStyle = "#333";
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // Text
+            ctx.fillStyle = "#000";
+            ctx.textAlign = "center";
+            ctx.fillText(this.speechBubble, vx + window.TILE_SIZE / 2, by);
+        }
+
     }
 
 }
