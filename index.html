@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conway's Game of Life</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Conway's Game of Life</h1>
+        <div class="controls">
+            <button id="startBtn">Start</button>
+            <button id="pauseBtn">Pause</button>
+            <button id="clearBtn">Clear</button>
+            <button id="randomBtn">Randomize</button>
+            <label for="speedRange">Speed:</label>
+            <input type="range" id="speedRange" min="10" max="500" value="100" step="10" dir="rtl">
+        </div>
+        <canvas id="gridCanvas" width="800" height="600"></canvas>
+        <p class="instructions">Click and drag on the grid to draw cells.</p>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
