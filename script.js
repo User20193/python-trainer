@@ -116,16 +116,16 @@ const memoryLog = document.getElementById('memoryLog');
 let isRunning = true;
 let isFastForward = false;
 
-window.weather = "Sunny";
+window.weather = "Солнечно";
 window.weatherTimer = 0;
 function updateWeather() {
     window.weatherTimer -= 5;
     if (window.weatherTimer <= 0) {
         if (Math.random() < 0.2) {
-            window.weather = "Raining";
+            window.weather = "Дождь";
             window.weatherTimer = 180; // 3 hours of rain
         } else {
-            window.weather = "Sunny";
+            window.weather = "Солнечно";
             window.weatherTimer = 300;
         }
     }
@@ -136,7 +136,7 @@ let dayCount = 1;
 let animationId;
 let lastFrameTime = 0;
 
-const NAMES = ["Alice", "Bob", "Charlie", "Diana", "Eve", "Frank", "Grace", "Hank"];
+const NAMES = ["Алиса", "Борис", "Виктор", "Даша", "Елена", "Федор", "Галина", "Харитон"];
 
 class Person {
     constructor(id) {
@@ -158,13 +158,13 @@ class Person {
         // AI State
 
         // AI State
-        this.currentAction = "Idle";
+        this.currentAction = "Безделье";
         this.path = [];
         this.target = null;
         this.memory = [];
 
         // Emergence stats/traits
-        this.statusEffects = []; // e.g. "Cold", "Angry"
+        this.statusEffects = []; // e.g. "Cold", "Злой"
         this.inventory = [];
 
         // Relationships: person.id -> relationship value (-100 to 100)
@@ -178,7 +178,7 @@ class Person {
             social: 0.08 + Math.random() * 0.08
         };
 
-        this.log("Woke up in MiniVille.");
+        this.log("Проснулся в МиниГраде.");
     }
 
 
@@ -194,7 +194,7 @@ class Person {
             existing.duration = Math.max(existing.duration, duration);
         } else {
             this.statusEffects.push({name: status, duration: duration});
-            this.log(`Gained status: ${status}`);
+            this.log(`Получен статус: ${status}`);
         }
     }
 
@@ -202,13 +202,13 @@ class Person {
     update() {
         // Decay needs over time
         let eDecay = this.decay.energy;
-        if (this.statusEffects.find(s => s.name === "Sick")) eDecay *= 2.0; // Sickness drains energy
+        if (this.statusEffects.find(s => s.name === "Болен")) eDecay *= 2.0; // Sickness drains energy
 
         this.energy -= eDecay;
         this.hunger -= this.decay.hunger;
 
         let sDecay = this.decay.social;
-        if (this.statusEffects.find(s => s.name === "Angry")) sDecay *= 0.5; // Angry people don't want to talk as much
+        if (this.statusEffects.find(s => s.name === "Злой")) sDecay *= 0.5; // Angry people don't want to talk as much
         this.social -= sDecay;
 
         // Clamp
@@ -220,10 +220,11 @@ class Person {
         for (let i = this.statusEffects.length - 1; i >= 0; i--) {
             this.statusEffects[i].duration -= 5; // 5 mins per tick
             if (this.statusEffects[i].duration <= 0) {
-                this.log(`Lost status: ${this.statusEffects[i].name}`);
+                this.log(`Потерян статус: ${this.statusEffects[i].name}`);
                 this.statusEffects.splice(i, 1);
             }
         }
+
 
         // Movement along path
         if (this.path && this.path.length > 0) {
@@ -231,17 +232,22 @@ class Person {
             this.x = nextStep.x;
             this.y = nextStep.y;
             this.path.shift();
+
+            // Dynamic Encounters on the road!
+            this.checkDynamicEncounters();
+
             return; // Busy walking
         }
+
 
 
         // Utility AI: Evaluate needs and pick action
 
         // Weather effects on emergence
-        if (window.weather === "Raining" && this.currentAction !== "Sleeping" && this.currentAction !== "Working" && this.currentAction !== "Eating at Cafe") {
+        if (window.weather === "Дождь" && this.currentAction !== "Сон" && this.currentAction !== "Работа" && this.currentAction !== "Ест в кафе") {
              if (Math.random() < 0.05) {
-                 this.addStatus("Sick", 200);
-                 this.log("Got sick from the rain.");
+                 this.addStatus("Болен", 200);
+                 this.log("Заболел из-за дождя.");
              }
         }
 
@@ -250,9 +256,55 @@ class Person {
     }
 
 
+
+    checkDynamicEncounters() {
+        let othersHere = people.filter(p => p !== this && p.x === this.x && p.y === this.y);
+        for (let other of othersHere) {
+            let rel = this.relationships[other.id] || 0;
+
+            // Friends stopping to chat
+            if (rel > 20 && Math.random() < 0.2) {
+                this.log(`Случайно встретил друга ${other.name}!`);
+                this.social += 5;
+                other.social += 5;
+                // Minor delay (stop moving for a turn by not progressing path if we implement a wait timer,
+                // but just stat bump is fine for now to not break A* targeting)
+            }
+
+            // Enemies fighting on sight!
+            if (rel < -20 && Math.random() < 0.3) {
+                this.log(`Увидел врага ${other.name} и завязалась драка!`);
+                this.energy -= 10;
+                other.energy -= 10;
+                this.addStatus("Злой", 100);
+                other.addStatus("Злой", 100);
+
+                // Interrupt plans - run home!
+                this.currentAction = "Бегство";
+                this.target = this.home;
+                this.path = window.findPath(this.x, this.y, this.home.x, this.home.y);
+
+                other.currentAction = "Бегство";
+                other.target = other.home;
+                other.path = window.findPath(other.x, other.y, other.home.x, other.home.y);
+            }
+
+            // Desperate stealing
+            if (this.hunger < 20 && this.money < 5 && other.money > 20 && Math.random() < 0.1) {
+                this.log(`Украл деньги у ${other.name} от отчаяния!`);
+                this.money += 15;
+                other.money -= 15;
+                this.relationships[other.id] = rel - 50;
+                other.relationships[this.id] = (other.relationships[this.id] || 0) - 50;
+                other.addStatus("Злой", 200);
+            }
+        }
+    }
+
+
     decideAction() {
         let hour = Math.floor(gameTime / 60);
-        let action = "Idle";
+        let action = "Безделье";
         let targetLocation = null;
         let highestUtility = 0;
 
@@ -261,7 +313,7 @@ class Person {
         if (hour >= 22 || hour < 6) sleepUtility += 100; // Go home at night
         if (sleepUtility > highestUtility) {
             highestUtility = sleepUtility;
-            action = "Sleeping";
+            action = "Сон";
             targetLocation = this.home;
         }
 
@@ -270,7 +322,7 @@ class Person {
         if (this.money < 10) eatUtility -= 50; // Can't afford cafe
         if (eatUtility > highestUtility && eatUtility > 50) {
             highestUtility = eatUtility;
-            action = "Eating at Cafe";
+            action = "Ест в кафе";
             targetLocation = window.cafes[Math.floor(Math.random() * window.cafes.length)];
         }
 
@@ -281,7 +333,7 @@ class Person {
         }
         if (workUtility > highestUtility) {
             highestUtility = workUtility;
-            action = "Working";
+            action = "Работа";
             targetLocation = window.works[Math.floor(Math.random() * window.works.length)];
         }
 
@@ -290,14 +342,35 @@ class Person {
         if (hour >= 18 && hour <= 21) socialUtility += 30; // Evening in park
         if (socialUtility > highestUtility && socialUtility > 40) {
             highestUtility = socialUtility;
-            action = "Socializing in Park";
+            action = "Отдых в парке";
             targetLocation = window.parks[Math.floor(Math.random() * window.parks.length)];
         }
+
+
+        // 4.5. В ГОСТЯХ (Visit a friend if social is low but park is boring/raining, or just want to visit friends)
+        let visitUtility = 0;
+        let friendToVisit = null;
+        if (this.social < 60) {
+            // Find a friend (relationship > 10)
+            let friends = people.filter(p => p !== this && (this.relationships[p.id] || 0) > 10);
+            if (friends.length > 0) {
+                friendToVisit = friends[Math.floor(Math.random() * friends.length)];
+                visitUtility = (100 - this.social) * 1.1; // Slightly less than park but good alternative
+                if (window.weather === "Дождь") visitUtility += 40; // Prefer visiting indoors if raining
+            }
+        }
+
+        if (visitUtility > highestUtility && visitUtility > 45) {
+            highestUtility = visitUtility;
+            action = "В гостях";
+            targetLocation = friendToVisit.home;
+        }
+
 
         // Execution of Action
         if (this.currentAction !== action) {
             this.currentAction = action;
-            this.log(`Decided to: ${action}`);
+            this.log(`Решил(а): ${action}`);
 
             // Generate path if target is different from current location
             if (targetLocation && (this.x !== targetLocation.x || this.y !== targetLocation.y)) {
@@ -310,23 +383,23 @@ class Person {
         } else {
 
             // Arrived at destination, perform action effects
-            if (action === "Sleeping") {
+            if (action === "Сон") {
                 this.energy += 5;
-                if (this.statusEffects.find(s => s.name === "Sick")) this.energy += 2; // Sleep helps sickness
+                if (this.statusEffects.find(s => s.name === "Болен")) this.energy += 2; // Sleep helps sickness
             }
-            if (action === "Eating at Cafe") {
+            if (action === "Ест в кафе") {
                 this.hunger += 10;
                 this.money -= 0.5;
                 // Chance to get sick from cafe
                 if (Math.random() < 0.01) {
-                    this.addStatus("Sick", 120); // Sick for 2 hours
+                    this.addStatus("Болен", 120); // Sick for 2 hours
                 }
             }
-            if (action === "Working") {
+            if (action === "Работа") {
                 this.money += 2;
                 this.energy -= 0.1;
                 this.social -= 0.1;
-                if (this.statusEffects.find(s => s.name === "Angry")) {
+                if (this.statusEffects.find(s => s.name === "Злой")) {
                     this.money -= 1; // Angry workers perform poorly
                 }
             }
@@ -334,44 +407,46 @@ class Person {
             // Emergent Interactions Engine
             let othersHere = people.filter(p => p !== this && p.x === this.x && p.y === this.y && p.currentAction === this.currentAction);
 
-            if (action === "Socializing in Park" || othersHere.length > 0) {
+
+            if (action === "Отдых в парке" || action === "В гостях" || othersHere.length > 0) {
+
                 this.social += 5;
 
                 for (let other of othersHere) {
                     let rel = this.relationships[other.id] || 0;
 
                     // Condition 1: Both are hungry and one has food (simulated by money right now)
-                    if (this.hunger < 30 && other.hunger < 30 && other.money > 20 && this.money < 10 && action !== "Working") {
+                    if (this.hunger < 30 && other.hunger < 30 && other.money > 20 && this.money < 10 && action !== "Работа") {
                         if (Math.random() < 0.1) {
-                            this.log(`Begged ${other.name} for food.`);
+                            this.log(`Выпросил еду у ${other.name}.`);
                             this.hunger += 30;
                             other.money -= 10;
                             this.relationships[other.id] = rel - 5; // They don't like beggars
-                            other.addStatus("Annoyed", 60);
+                            other.addStatus("Раздражен", 60);
                         }
                     }
 
                     // Condition 2: Angry person meets someone
-                    if (this.statusEffects.find(s => s.name === "Angry")) {
+                    if (this.statusEffects.find(s => s.name === "Злой")) {
                         if (Math.random() < 0.2) {
-                            this.log(`Yelled at ${other.name}!`);
-                            other.addStatus("Angry", 120); // Spread anger
+                            this.log(`Наорал на ${other.name}!`);
+                            other.addStatus("Злой", 120); // Spread anger
                             this.relationships[other.id] = rel - 15;
-                            this.statusEffects = this.statusEffects.filter(s => s.name !== "Angry"); // Relieved anger
-                            this.log("Felt better after yelling.");
+                            this.statusEffects = this.statusEffects.filter(s => s.name !== "Злой"); // Relieved anger
+                            this.log("Стало легче после крика.");
                         }
                     }
                     // Condition 3: Normal chat
                     else if (Math.random() < 0.1) {
                         if (rel > 10) {
-                            this.log(`Had a wonderful chat with friend ${other.name}.`);
+                            this.log(`Отлично поболтал с другом ${other.name}.`);
                             this.social += 15;
                             this.energy += 2; // Good chats energize
-                        } else if (other.statusEffects.find(s => s.name === "Sick")) {
-                             this.log(`Talked to ${other.name}, but they sneezed on me.`);
-                             if (Math.random() < 0.5) this.addStatus("Sick", 180);
+                        } else if (other.statusEffects.find(s => s.name === "Болен")) {
+                             this.log(`Говорил с ${other.name}, и он чихнул на меня.`);
+                             if (Math.random() < 0.5) this.addStatus("Болен", 180);
                         } else {
-                            this.log(`Had a chat with ${other.name}.`);
+                            this.log(`Поболтал с ${other.name}.`);
                             this.social += 10;
                             this.relationships[other.id] = rel + 2;
                         }
@@ -379,9 +454,9 @@ class Person {
 
                     // Random argument
                     if (Math.random() < 0.005) {
-                        this.log(`Got into a fight with ${other.name}!`);
-                        this.addStatus("Angry", 120);
-                        other.addStatus("Angry", 120);
+                        this.log(`Подрался с ${other.name}!`);
+                        this.addStatus("Злой", 120);
+                        other.addStatus("Злой", 120);
                         this.relationships[other.id] = rel - 20;
                     }
 
@@ -412,12 +487,19 @@ class Person {
         ctx.fill();
         ctx.stroke();
 
+
         // Draw emoji bubble based on action
         let emoji = "";
-        if (this.currentAction === "Sleeping") emoji = "💤";
-        if (this.currentAction === "Eating at Cafe") emoji = "🍔";
-        if (this.currentAction === "Working") emoji = "💼";
-        if (this.currentAction === "Socializing in Park") emoji = "💬";
+        if (this.currentAction === "Сон") emoji = "💤";
+        if (this.currentAction === "Ест в кафе") emoji = "🍔";
+        if (this.currentAction === "Работа") emoji = "💼";
+        if (this.currentAction === "Отдых в парке") emoji = "💬";
+        if (this.currentAction === "В гостях") emoji = "🏠";
+        if (this.currentAction === "Бегство") emoji = "🏃";
+
+        if (this.statusEffects.find(s => s.name === "Злой")) emoji = "🤬"; // override with status emotion
+        if (this.statusEffects.find(s => s.name === "Болен")) emoji = "🤒";
+
 
         if (emoji) {
             ctx.font = "16px Arial";
@@ -525,17 +607,17 @@ function gameLoop(timestamp) {
 // Events
 toggleBtn.addEventListener('click', () => {
     isRunning = !isRunning;
-    toggleBtn.textContent = isRunning ? "Pause" : "Start";
+    toggleBtn.textContent = isRunning ? "Пауза" : "Старт";
 });
 
 speedBtn.addEventListener('click', () => {
     isFastForward = !isFastForward;
     if (isFastForward) {
         speedBtn.classList.add('active-fast');
-        speedBtn.textContent = "Normal Speed ⏯️";
+        speedBtn.textContent = "Обычная Скорость ⏯️";
     } else {
         speedBtn.classList.remove('active-fast');
-        speedBtn.textContent = "Fast Forward ⏩";
+        speedBtn.textContent = "Ускорение ⏩";
     }
 });
 

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MiniVille (Utility AI Life Sim)</title>
+    <title>МиниГрад (Симуляция жизни ИИ)</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -11,63 +11,63 @@
 
         <div class="main-panel">
             <div class="header">
-                <h1>MiniVille</h1>
+                <h1>МиниГрад</h1>
                 <div class="time-display">
-                    Day <span id="dayCount">1</span> | <span id="clockTime">08:00</span>
+                    День <span id="dayCount">1</span> | <span id="clockTime">08:00</span>
                 </div>
                 <div class="controls">
-                    <button id="toggleBtn">Pause</button>
-                    <button id="speedBtn">Fast Forward ⏩</button>
+                    <button id="toggleBtn">Пауза</button>
+                    <button id="speedBtn">Ускорение ⏩</button>
                 </div>
             </div>
 
             <div class="canvas-container">
                 <canvas id="simCanvas" width="800" height="600"></canvas>
             </div>
-            <p class="hint">Click on any character to inspect their thoughts, needs, and memory.</p>
+            <p class="hint">Нажмите на любого персонажа, чтобы увидеть его мысли, потребности и память.</p>
         </div>
 
         <div class="dashboard">
-            <h2>Inspector</h2>
+            <h2>Инспектор</h2>
             <div class="inspector" id="inspectorPanel">
-                <p class="inspector-hint">Select a character...</p>
+                <p class="inspector-hint">Выберите персонажа...</p>
                 <div class="inspector-data" style="display: none;">
-                    <h3 id="insName">Name</h3>
+                    <h3 id="insName">Имя</h3>
                     <p class="status">💭 "<span id="insAction">Sleeping</span>"</p>
 
                     <hr>
-                    <h4>Needs</h4>
+                    <h4>Потребности</h4>
                     <div class="need-bar-container">
-                        <label>Energy (Sleep)</label>
+                        <label>Энергия (Сон)</label>
                         <div class="bar-bg"><div class="bar-fill blue-bar" id="barEnergy"></div></div>
                     </div>
                     <div class="need-bar-container">
-                        <label>Hunger (Food)</label>
+                        <label>Голод (Еда)</label>
                         <div class="bar-bg"><div class="bar-fill green-bar" id="barHunger"></div></div>
                     </div>
                     <div class="need-bar-container">
-                        <label>Social (Chat)</label>
+                        <label>Общение (Разговор)</label>
                         <div class="bar-bg"><div class="bar-fill orange-bar" id="barSocial"></div></div>
                     </div>
                     <div class="need-bar-container">
-                        <label>Money</label>
+                        <label>Деньги</label>
                         <div style="color: gold; font-weight: bold;">$<span id="insMoney">0</span></div>
                     </div>
 
                     <hr>
-                    <h4>Memory / Logs</h4>
+                    <h4>Память / Логи</h4>
                     <ul class="memory-log" id="memoryLog">
                         <!-- Filled by JS -->
                     </ul>
                 </div>
             </div>
 
-            <h2>Legend</h2>
+            <h2>Легенда</h2>
             <ul class="legend">
-                <li><span class="color-box" style="background: #3b82f6;"></span> House (Sleep)</li>
-                <li><span class="color-box" style="background: #8b5cf6;"></span> Office (Work)</li>
-                <li><span class="color-box" style="background: #ef4444;"></span> Cafe (Eat)</li>
-                <li><span class="color-box" style="background: #22c55e;"></span> Park (Socialize)</li>
+                <li><span class="color-box" style="background: #3b82f6;"></span> Дом (Сон)</li>
+                <li><span class="color-box" style="background: #8b5cf6;"></span> Офис (Работа)</li>
+                <li><span class="color-box" style="background: #ef4444;"></span> Кафе (Еда)</li>
+                <li><span class="color-box" style="background: #22c55e;"></span> Парк (Общение)</li>
             </ul>
         </div>
 
