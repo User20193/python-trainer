@@ -1,144 +1,163 @@
-const canvas = document.getElementById('gridCanvas');
+const canvas = document.getElementById('simCanvas');
 const ctx = canvas.getContext('2d');
 
-const startBtn = document.getElementById('startBtn');
-const pauseBtn = document.getElementById('pauseBtn');
-const clearBtn = document.getElementById('clearBtn');
-const randomBtn = document.getElementById('randomBtn');
-const speedRange = document.getElementById('speedRange');
+const toggleBtn = document.getElementById('toggleBtn');
+const randomizeRulesBtn = document.getElementById('randomizeRulesBtn');
+const resetParticlesBtn = document.getElementById('resetParticlesBtn');
+const frictionSlider = document.getElementById('frictionSlider');
+const radiusSlider = document.getElementById('radiusSlider');
 
-const cellSize = 10;
-const cols = canvas.width / cellSize;
-const rows = canvas.height / cellSize;
-
-let grid = createGrid();
-let isRunning = false;
+// Configuration
+const width = canvas.width;
+const height = canvas.height;
+let isRunning = true;
 let animationId;
-let updateInterval = parseInt(speedRange.value);
-let lastUpdateTime = 0;
-let isDrawing = false;
 
-function createGrid() {
-    return new Array(cols).fill(null)
-        .map(() => new Array(rows).fill(0));
+// Physics parameters
+let friction = 0.5; // (will be derived from slider)
+let maxRadius = 80;
+
+// Particle setup
+const numParticlesPerColor = 400;
+const colors = ['#ef4444', '#22c55e', '#3b82f6', '#eab308', '#a855f7', '#06b6d4']; // Red, Green, Blue, Yellow, Purple, Cyan
+let particles = [];
+let rules = []; // Matrix of attraction/repulsion between colors
+
+// Initialize rules matrix with random values between -1 (repel) and 1 (attract)
+function randomizeRules() {
+    rules = [];
+    for (let i = 0; i < colors.length; i++) {
+        let row = [];
+        for (let j = 0; j < colors.length; j++) {
+            // Random value between -1 and 1
+            row.push(Math.random() * 2 - 1);
+        }
+        rules.push(row);
+    }
 }
 
-function randomizeGrid() {
-    for (let i = 0; i < cols; i++) {
-        for (let j = 0; j < rows; j++) {
-            grid[i][j] = Math.random() > 0.85 ? 1 : 0;
+// Create particles
+function initParticles() {
+    particles = [];
+    for (let i = 0; i < colors.length; i++) {
+        for (let j = 0; j < numParticlesPerColor; j++) {
+            particles.push({
+                x: Math.random() * width,
+                y: Math.random() * height,
+                vx: 0,
+                vy: 0,
+                colorIndex: i,
+                color: colors[i]
+            });
         }
     }
 }
 
-function drawGrid() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+// Core physics engine
+function updateParticles() {
+    friction = frictionSlider.value / 100;
+    maxRadius = parseInt(radiusSlider.value);
 
-    ctx.fillStyle = '#4CAF50';
-    for (let i = 0; i < cols; i++) {
-        for (let j = 0; j < rows; j++) {
-            if (grid[i][j] === 1) {
-                ctx.fillRect(i * cellSize, j * cellSize, cellSize - 1, cellSize - 1);
+    // Using a simple O(N^2) for 2400 particles is manageable in JS,
+    // but we optimize by pre-calculating some things.
+    for (let i = 0; i < particles.length; i++) {
+        let p1 = particles[i];
+        let fx = 0;
+        let fy = 0;
+
+        for (let j = 0; j < particles.length; j++) {
+            if (i === j) continue;
+            let p2 = particles[j];
+
+            let dx = p1.x - p2.x;
+            let dy = p1.y - p2.y;
+
+            // Toroidal wrap (wrap around screen edges for distance calculation)
+            if (dx > width / 2) dx -= width;
+            else if (dx < -width / 2) dx += width;
+
+            if (dy > height / 2) dy -= height;
+            else if (dy < -height / 2) dy += height;
+
+            let d2 = dx * dx + dy * dy;
+
+            if (d2 > 0 && d2 < maxRadius * maxRadius) {
+                let d = Math.sqrt(d2);
+                // Force factor based on rule matrix
+                let force = rules[p1.colorIndex][p2.colorIndex];
+
+                // Extremely close particles repel strongly (collision avoidance)
+                if (d < 5) {
+                    force = 3; // Positive force pushes p1 away from p2 (repulsion)
+                }
+
+                // Normal attraction/repulsion based on distance
+                // The force fades out linearly as distance approaches maxRadius
+                let strength = force * (1 - d / maxRadius);
+
+                fx += (dx / d) * strength;
+                fy += (dy / d) * strength;
             }
         }
-    }
-}
 
-function updateGrid() {
-    let newGrid = createGrid();
-    for (let i = 0; i < cols; i++) {
-        for (let j = 0; j < rows; j++) {
-            let neighbors = countNeighbors(i, j);
-            if (grid[i][j] === 1 && (neighbors === 2 || neighbors === 3)) {
-                newGrid[i][j] = 1;
-            } else if (grid[i][j] === 0 && neighbors === 3) {
-                newGrid[i][j] = 1;
-            } else {
-                newGrid[i][j] = 0;
-            }
+        // Apply force to velocity, with friction
+        p1.vx = (p1.vx + fx) * friction;
+        p1.vy = (p1.vy + fy) * friction;
+
+        // Speed limit
+        let speed = Math.sqrt(p1.vx * p1.vx + p1.vy * p1.vy);
+        if (speed > 15) {
+            p1.vx = (p1.vx / speed) * 15;
+            p1.vy = (p1.vy / speed) * 15;
         }
-    }
-    grid = newGrid;
-}
 
-function countNeighbors(x, y) {
-    let sum = 0;
-    for (let i = -1; i < 2; i++) {
-        for (let j = -1; j < 2; j++) {
-            let col = (x + i + cols) % cols;
-            let row = (y + j + rows) % rows;
-            sum += grid[col][row];
-        }
-    }
-    sum -= grid[x][y];
-    return sum;
-}
+        // Update position
+        p1.x += p1.vx;
+        p1.y += p1.vy;
 
-function gameLoop(timestamp) {
-    if (!isRunning) return;
+        // Wrap around screen boundaries
+        if (p1.x < 0) p1.x += width;
+        else if (p1.x >= width) p1.x -= width;
 
-    if (timestamp - lastUpdateTime > updateInterval) {
-        updateGrid();
-        drawGrid();
-        lastUpdateTime = timestamp;
-    }
-
-    animationId = requestAnimationFrame(gameLoop);
-}
-
-startBtn.addEventListener('click', () => {
-    if (!isRunning) {
-        isRunning = true;
-        lastUpdateTime = performance.now();
-        requestAnimationFrame(gameLoop);
-    }
-});
-
-pauseBtn.addEventListener('click', () => {
-    isRunning = false;
-    cancelAnimationFrame(animationId);
-});
-
-clearBtn.addEventListener('click', () => {
-    isRunning = false;
-    cancelAnimationFrame(animationId);
-    grid = createGrid();
-    drawGrid();
-});
-
-randomBtn.addEventListener('click', () => {
-    randomizeGrid();
-    drawGrid();
-});
-
-speedRange.addEventListener('input', (e) => {
-    updateInterval = parseInt(e.target.value);
-});
-
-canvas.addEventListener('mousedown', (e) => {
-    isDrawing = true;
-    toggleCell(e);
-});
-
-canvas.addEventListener('mousemove', (e) => {
-    if (isDrawing) {
-        toggleCell(e);
-    }
-});
-
-window.addEventListener('mouseup', () => {
-    isDrawing = false;
-});
-
-function toggleCell(e) {
-    const rect = canvas.getBoundingClientRect();
-    const x = Math.floor((e.clientX - rect.left) / cellSize);
-    const y = Math.floor((e.clientY - rect.top) / cellSize);
-
-    if (x >= 0 && x < cols && y >= 0 && y < rows) {
-        grid[x][y] = 1;
-        drawGrid();
+        if (p1.y < 0) p1.y += height;
+        else if (p1.y >= height) p1.y -= height;
     }
 }
 
-drawGrid();
+function drawParticles() {
+    ctx.clearRect(0, 0, width, height);
+
+    // We can draw slightly larger/blurred to look cool, or just solid squares
+    for (let i = 0; i < particles.length; i++) {
+        let p = particles[i];
+        ctx.fillStyle = p.color;
+        ctx.fillRect(p.x, p.y, 3, 3);
+    }
+}
+
+function loop() {
+    if (isRunning) {
+        updateParticles();
+        drawParticles();
+    }
+    animationId = requestAnimationFrame(loop);
+}
+
+// Event Listeners
+toggleBtn.addEventListener('click', () => {
+    isRunning = !isRunning;
+    toggleBtn.textContent = isRunning ? "Pause" : "Start";
+});
+
+randomizeRulesBtn.addEventListener('click', () => {
+    randomizeRules();
+});
+
+resetParticlesBtn.addEventListener('click', () => {
+    initParticles();
+});
+
+// Boot up
+randomizeRules();
+initParticles();
+loop();

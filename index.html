@@ -3,22 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Conway's Game of Life</title>
+    <title>Particle Life Simulation</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
-        <h1>Conway's Game of Life</h1>
+        <h1>Particle Life (Artificial Life)</h1>
         <div class="controls">
-            <button id="startBtn">Start</button>
-            <button id="pauseBtn">Pause</button>
-            <button id="clearBtn">Clear</button>
-            <button id="randomBtn">Randomize</button>
-            <label for="speedRange">Speed:</label>
-            <input type="range" id="speedRange" min="10" max="500" value="100" step="10" dir="rtl">
+            <button id="toggleBtn">Pause</button>
+            <button id="randomizeRulesBtn">Randomize Laws of Physics 🌌</button>
+            <button id="resetParticlesBtn">Reset Particles</button>
         </div>
-        <canvas id="gridCanvas" width="800" height="600"></canvas>
-        <p class="instructions">Click and drag on the grid to draw cells.</p>
+        <div class="sliders">
+            <label>Friction: <input type="range" id="frictionSlider" min="1" max="99" value="50"></label>
+            <label>Interaction Radius: <input type="range" id="radiusSlider" min="10" max="200" value="80"></label>
+        </div>
+        <canvas id="simCanvas" width="800" height="600"></canvas>
+        <p class="instructions">Click "Randomize Laws of Physics" to discover new emergent behaviors (organisms, crystals, swarms).</p>
     </div>
     <script src="script.js"></script>
 </body>
